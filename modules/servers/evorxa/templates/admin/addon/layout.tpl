@@ -1,5 +1,5 @@
 {literal}<style>
-.evxm{--evxm-accent:#e2445c;--evxm-ink:#111827;--evxm-muted:#6b7280;--evxm-line:#e5e7eb;--evxm-soft:#f8fafc;max-width:1240px;color:var(--evxm-ink)}
+.evxm{--evxm-accent:#e2445c;--evxm-ink:#111827;--evxm-muted:#6b7280;--evxm-line:#e5e7eb;--evxm-soft:#f8fafc;width:100%;max-width:none;color:var(--evxm-ink)}
 .evxm *{box-sizing:border-box}
 .evxm .evxm-head{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 22px;margin-bottom:16px;border-radius:12px;background:#fff;border:1px solid var(--evxm-line);box-shadow:0 1px 2px rgba(17,24,39,.04);position:relative;overflow:hidden}
 .evxm .evxm-head::after{content:"";position:absolute;inset:auto 0 0 0;height:3px;background:linear-gradient(90deg,var(--evxm-accent),#111827)}

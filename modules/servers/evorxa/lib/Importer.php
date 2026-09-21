@@ -57,7 +57,8 @@ class Importer
             $plan = $plans[$packageId];
             $name = self::productName($plan);
             $existing = Capsule::table('tblproducts')
-                ->where('servertype', 'evorxa')->where('gid', $gid)->where('configoption1', (string) $packageId)->first();
+                ->where('servertype', 'evorxa')->where('gid', $gid)->where('retired', 0)
+                ->where('configoption1', (string) $packageId)->first();
             if ($existing) {
                 $report[] = ['plan' => $name, 'status' => 'skipped', 'pid' => $existing->id, 'name' => $existing->name, 'message' => 'Already in this group'];
                 continue;
@@ -85,7 +86,7 @@ class Importer
                     'type' => 'other',
                     'gid' => $gid,
                     'name' => $name,
-                    'description' => self::description($plan),
+                    'description' => self::description($plan, $this->offersWindows($packageId)),
                     'hidden' => !empty($opts['hidden']),
                     'paytype' => 'recurring',
                     'autosetup' => 'payment',
@@ -144,7 +145,7 @@ class Importer
         return round($value, 2);
     }
 
-    public static function description(array $plan)
+    public static function description(array $plan, $windows = false)
     {
         $items = [
             (int) $plan['vcpu'] . ' vCPU cores',
@@ -156,8 +157,18 @@ class Importer
         }
         $items[] = 'Always-on DDoS protection';
         $items[] = 'Full root access, ready in minutes';
-        $items[] = 'Linux, Windows or one-click apps';
+        $items[] = $windows ? 'Linux, Windows or one-click apps' : 'Linux or one-click apps';
         return '<ul><li>' . implode('</li><li>', $items) . '</li></ul>';
+    }
+
+    public function offersWindows($packageId)
+    {
+        foreach ($this->catalog->osTemplates($packageId) as $os) {
+            if ($os['type'] === 'windows' && !$os['eol']) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private function defaultOs($packageId)
