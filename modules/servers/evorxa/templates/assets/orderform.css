@@ -69,6 +69,7 @@ select.evx-of-native { display: none !important; }
 
 /* OS | App switch (both options merged into one picker) */
 .evx-of-hidden { display: none !important; }
+.evx-of-full { width: 100% !important; max-width: 100% !important; flex: 0 0 100% !important; float: none !important; }
 .evx-of-pane[hidden] { display: none !important; }
 .evx-of-switch {
     display: inline-flex; gap: 4px; padding: 4px; margin: 0 0 16px; border-radius: 12px;

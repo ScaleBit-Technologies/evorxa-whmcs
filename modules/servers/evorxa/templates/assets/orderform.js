@@ -83,6 +83,24 @@
         return null;
     }
 
+    /**
+     * Grid column around an option block (Standard Cart puts options in half-width .col-sm-6).
+     * Stops at the options container so the page layout itself is never touched.
+     */
+    function gridColumn(block) {
+        var node = block;
+        while (node && node.parentElement) {
+            if (/\bcol-(xs-|sm-|md-|lg-|xl-)?\d+\b/.test(node.className || '')) {
+                return node;
+            }
+            if (node.id === 'productConfigurableOptions' || /product-configurable-options/.test(node.className || '')) {
+                return null;
+            }
+            node = node.parentElement;
+        }
+        return null;
+    }
+
     // ------------------------------------------------------------------ operating system
 
     function buildOs(pane, select, def) {
@@ -258,8 +276,16 @@
         var appBlock = optionBlock(app.select, os.select);
         if (appBlock) {
             appBlock.classList.add('evx-of-hidden'); // still submitted with the form
+            var appCol = gridColumn(appBlock);
+            if (appCol && !appCol.contains(os.select)) {
+                appCol.classList.add('evx-of-hidden');
+            }
         }
         var osBlock = optionBlock(os.select, app.select);
+        var osCol = osBlock ? gridColumn(osBlock) : null;
+        if (osCol && !osCol.contains(app.select)) {
+            osCol.classList.add('evx-of-full'); // picker needs the whole row
+        }
         var heading = osBlock ? osBlock.querySelector('.section-title, h2, h3, label') : null;
         if (heading && T.title) {
             heading.textContent = T.title;
