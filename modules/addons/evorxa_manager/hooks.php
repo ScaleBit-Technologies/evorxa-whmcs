@@ -26,6 +26,15 @@ add_hook('AfterCronJob', 1, function () {
     }
 });
 
+/** Order form: logo cards for "Operating System" / "One-Click App" on Evorxa products. */
+add_hook('ClientAreaFooterOutput', 1, function ($vars) {
+    try {
+        return \WHMCS\Module\Server\Evorxa\OrderForm::footer($vars);
+    } catch (\Throwable $e) {
+        return ''; // the plain dropdowns keep working
+    }
+});
+
 /**
  * End-of-period cancellation: stop the upstream renewal before Evorxa charges the next cycle
  * (it renews 5 days before the paid-until date, while WHMCS terminates on the due date).

@@ -244,4 +244,13 @@ $_LANG = [
     'js_rdns_saved' => 'Reverse DNS updated.',
     'err_rdns' => 'Enter a full hostname such as host.example.com.',
     'js_retry' => 'Retry',
+    'of_version' => 'Version',
+    'of_none' => 'No app',
+    'of_none_sub' => 'Just the operating system',
+    'of_app_note' => 'The selected app installs its own system, so the operating system choice above is not used.',
+    'of_title' => 'Operating system or app',
+    'of_mode_os' => 'Operating system',
+    'of_mode_app' => 'One-click app',
+    'of_versions' => ':n versions',
+    'of_app_hint' => 'Pick an app. It comes with its own operating system, installed and ready to use.',
 ];

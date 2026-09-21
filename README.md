@@ -14,7 +14,7 @@ Requirements: WHMCS 8.0+, PHP 7.4-8.3 with cURL, and the WHMCS cron running **ev
 3. In the Evorxa dashboard, create an API token (`/api-tokens`). Recommended abilities: `instances:read`, `instances:write`, `analytics:read`, `shield:read`, `shield:write`, `wallet:read`.
 4. **Setup > Products/Services > Servers > Add New Server**: module *Evorxa Cloud*, hostname `api.evorxa.com`, paste the token into **Password**, then *Test Connection*.
 5. **Addons > Evorxa Manager > Settings**: choose the Evorxa project for client servers (use a dedicated project so they never mix with your own servers) and your hostname suffix (e.g. `example.com`; it also becomes the reverse DNS, so your brand shows instead of Evorxa's).
-6. **Plans & Import**: tick plans, set a markup (e.g. 40 %) and rounding, import. Products are created hidden with OS/app choices, hostname and SSH-key fields, stock control and upgrade paths. Review them, then unhide.
+6. **Plans & Import**: tick plans, set a markup (e.g. 40 %) and rounding, import. Products are created hidden with OS/app choices (shown to clients as a visual picker with logos), a hostname field, stock control and upgrade paths. Review them, then unhide.
 
 The dashboard's setup checklist shows what is still missing.
 

@@ -1,0 +1,94 @@
+/* Evorxa Cloud - order form OS / app picker. Scoped to .evx-of; follows the theme's --brand-primary. */
+.evx-of {
+    --evx-of-accent: var(--brand-primary, #2563eb);
+    --evx-of-border: rgba(15, 23, 42, .12);
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
+    text-align: start;
+}
+.evx-of *, .evx-of *::before, .evx-of *::after { box-sizing: border-box; }
+select.evx-of-native { display: none !important; }
+
+.evx-of-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.evx-of-apps { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+
+.evx-of-card {
+    display: flex; align-items: center; gap: 12px; width: 100%; margin: 0; padding: 12px 14px;
+    background: #fff; color: inherit; font: inherit; text-align: start; cursor: pointer;
+    border: 1.5px solid var(--evx-of-border); border-radius: var(--border-radius-base, 10px);
+    transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.evx-of-card:hover { border-color: var(--evx-of-accent); }
+.evx-of-card:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, .25); }
+.evx-of-card.is-active {
+    border-color: var(--evx-of-accent);
+    background: rgba(37, 99, 235, .05);
+    background: color-mix(in srgb, var(--evx-of-accent) 6%, #fff);
+    box-shadow: 0 0 0 1px var(--evx-of-accent);
+}
+
+.evx-of-logo {
+    flex: 0 0 38px; width: 38px; height: 38px; border-radius: 10px; padding: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: #fff; border: 1px solid rgba(15, 23, 42, .08);
+}
+.evx-of-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.evx-of-letter { color: #fff; font-weight: 700; font-size: 16px; border: 0; background: #64748b; }
+.evx-of-letter.evx-of-ubuntu { background: #e95420; }
+.evx-of-letter.evx-of-debian { background: #a80030; }
+.evx-of-letter.evx-of-almalinux { background: #0f4266; }
+.evx-of-letter.evx-of-centos { background: #932279; }
+.evx-of-letter.evx-of-windows { background: #0078d4; }
+.evx-of-letter.evx-of-rocky { background: #10b981; }
+.evx-of-plain { background: rgba(15, 23, 42, .06); color: #475569; }
+
+.evx-of-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.3; }
+.evx-of-title { font-weight: 600; font-size: 14px; }
+.evx-of-sub { font-size: 12px; opacity: .65; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.evx-of-label { margin: 16px 0 8px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; opacity: .6; }
+.evx-of-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.evx-of-pill {
+    display: inline-flex; flex-direction: column; align-items: flex-start; gap: 1px; margin: 0; padding: 8px 14px; cursor: pointer;
+    background: #fff; color: inherit; font: inherit; text-align: start;
+    border: 1.5px solid var(--evx-of-border); border-radius: 999px; transition: border-color .15s, background .15s;
+}
+.evx-of-pill:hover { border-color: var(--evx-of-accent); }
+.evx-of-pill:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, .25); }
+.evx-of-pill.is-active { border-color: var(--evx-of-accent); background: var(--evx-of-accent); color: #fff; }
+.evx-of-pill-title { font-weight: 600; font-size: 13px; line-height: 1.2; }
+.evx-of-pill-sub { font-size: 11px; opacity: .75; line-height: 1.2; }
+
+.evx-of-hint { margin: 0 0 12px; font-size: 13px; opacity: .75; }
+.evx-of-note { display: none; margin: 12px 0 0; font-size: 13px; padding: 9px 12px; border-radius: 8px; background: rgba(217, 119, 6, .1); color: #92400e; }
+.evx-of-os.is-overridden .evx-of-families,
+.evx-of-os.is-overridden .evx-of-pills,
+.evx-of-os.is-overridden .evx-of-label { opacity: .45; }
+.evx-of-os.is-overridden .evx-of-note { display: block; }
+
+/* OS | App switch (both options merged into one picker) */
+.evx-of-hidden { display: none !important; }
+.evx-of-pane[hidden] { display: none !important; }
+.evx-of-switch {
+    display: inline-flex; gap: 4px; padding: 4px; margin: 0 0 16px; border-radius: 12px;
+    background: rgba(15, 23, 42, .06);
+}
+.evx-of-tab {
+    border: 0; margin: 0; padding: 9px 18px; border-radius: 9px; cursor: pointer;
+    background: transparent; color: inherit; font: inherit; font-weight: 600; font-size: 14px; opacity: .7;
+    transition: background .15s, box-shadow .15s, opacity .15s;
+}
+.evx-of-tab:hover { opacity: 1; }
+.evx-of-tab:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(37, 99, 235, .25); }
+.evx-of-tab.is-active { opacity: 1; background: #fff; color: var(--evx-of-accent); box-shadow: 0 1px 3px rgba(15, 23, 42, .15); }
+@media (max-width: 575px) {
+    .evx-of-switch { display: flex; width: 100%; }
+    .evx-of-tab { flex: 1 1 0; padding: 9px 8px; }
+}
+@media (max-width: 575px) {
+    .evx-of-grid, .evx-of-apps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .evx-of-card { padding: 10px; gap: 8px; }
+    .evx-of-logo { flex-basis: 32px; width: 32px; height: 32px; padding: 5px; }
+    .evx-of-sub { white-space: normal; }
+}

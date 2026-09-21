@@ -7,7 +7,7 @@ use WHMCS\Module\Server\Evorxa\Api\Client;
 
 /**
  * Creates WHMCS products from Evorxa plans: pricing with markup, Module Settings,
- * "Operating System" / "One-Click App" configurable options, hostname + SSH key fields,
+ * "Operating System" / "One-Click App" configurable options, a hostname field,
  * stock control and upgrade paths. Re-running skips plans already imported into the group.
  */
 class Importer
@@ -364,13 +364,6 @@ class Importer
                 'description' => 'Optional. A name like web1, or a full hostname like server.example.com.',
                 'regexpr' => '/^$|^[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)*\.?$/',
                 'sortorder' => 1,
-            ],
-            [
-                'fieldname' => 'sshkey|SSH Public Key',
-                'fieldtype' => 'textarea',
-                'description' => 'Optional. Paste your OpenSSH public key (ssh-ed25519 or ssh-rsa) to log in without a password.',
-                'regexpr' => '/^\s*$|^\s*(ssh-(rsa|ed25519|dss)|ecdsa-sha2-nistp(256|384|521)|sk-(ssh-ed25519|ecdsa-sha2-nistp256)@openssh\.com)\s+[A-Za-z0-9+\/]+={0,3}(\s+[^\r\n]*)?\s*$/',
-                'sortorder' => 2,
             ],
         ];
         foreach ($fields as $field) {
