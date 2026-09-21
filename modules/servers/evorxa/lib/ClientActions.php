@@ -220,7 +220,8 @@ class ClientActions
         foreach ($catalog->reinstallOptions($this->row->instance_id, (int) $this->row->package_id) as $os) {
             $key = $os['family'] ?: 'Other';
             if (!isset($groups[$key])) {
-                $groups[$key] = ['family' => $key, 'icon' => ViewModel::osFamily($key), 'items' => []];
+                $family = ViewModel::osFamily($key);
+                $groups[$key] = ['family' => $key, 'icon' => $family, 'logo' => ViewModel::logo('os', $family), 'items' => []];
             }
             $groups[$key]['items'][] = ['id' => $os['id'], 'label' => $os['label'], 'eol' => $os['eol'], 'type' => $os['type']];
         }
@@ -229,7 +230,13 @@ class ClientActions
         $plan = $catalog->plan((int) $this->row->package_id);
         if ($features['apps'] && $plan) {
             foreach ($catalog->appsFor($plan) as $app) {
-                $apps[] = ['slug' => $app['slug'], 'name' => $app['name'], 'tagline' => $app['tagline'], 'category' => $app['category']];
+                $apps[] = [
+                    'slug' => $app['slug'],
+                    'name' => $app['name'],
+                    'tagline' => $app['tagline'],
+                    'category' => $app['category'],
+                    'logo' => ViewModel::logo('apps', $app['slug']),
+                ];
             }
         }
         return $this->ok(['groups' => array_values($groups), 'apps' => $apps]);
@@ -385,26 +392,14 @@ class ClientActions
             'incidentTotal' => $incidents['total'],
             'settings' => [
                 'email' => !empty($settings['email_notifications']),
-                'discord' => !empty($settings['discord_webhook_configured']),
-                'discordHint' => Util::clean(isset($settings['discord_webhook_hint']) ? $settings['discord_webhook_hint'] : '', 8),
             ],
         ]);
     }
 
+    /** Only the email toggle is exposed; webhook and affiliate settings are never sent. */
     private function actDdosSave()
     {
         $body = ['email_notifications' => !empty($_POST['email']) && $_POST['email'] !== '0'];
-        if (!empty($_POST['discord_remove'])) {
-            $body['discord_webhook_url'] = null;
-        } else {
-            $url = trim(isset($_POST['discord']) ? (string) $_POST['discord'] : '');
-            if ($url !== '') {
-                if (!preg_match('#^https://(ptb\.|canary\.)?(discord|discordapp)\.com/api/webhooks/[0-9]+/[A-Za-z0-9_-]+$#', $url)) {
-                    return $this->fail('err_webhook');
-                }
-                $body['discord_webhook_url'] = $url;
-            }
-        }
         if ($wait = $this->cooldown('ddos_save', 5)) {
             return $wait;
         }
@@ -430,20 +425,22 @@ class ClientActions
         if (!$ipId) {
             return $this->fail('err_unavailable');
         }
+        $direction = isset($_POST['direction']) ? (string) $_POST['direction'] : 'in';
         $action = isset($_POST['rule_action']) ? (string) $_POST['rule_action'] : '';
         $protocol = isset($_POST['protocol']) ? (string) $_POST['protocol'] : '';
         $source = trim(isset($_POST['source']) ? (string) $_POST['source'] : '');
         $port = trim(isset($_POST['port']) ? (string) $_POST['port'] : '');
-        if (!in_array($action, ['allow', 'block'], true) || !in_array($protocol, ['tcp', 'udp', 'any'], true)) {
+        if (!in_array($direction, ['in', 'out'], true) || !in_array($action, ['allow', 'block'], true) || !in_array($protocol, ['tcp', 'udp', 'any'], true)) {
             return $this->fail('err_rule');
         }
         if ($source !== '' && !Util::validCidr($source)) {
             return $this->fail('err_cidr');
         }
-        if ($port !== '' && (!ctype_digit($port) || (int) $port < 1 || (int) $port > 65535)) {
+        $ports = self::parsePorts($port);
+        if ($ports === false) {
             return $this->fail('err_port');
         }
-        if ($port !== '' && $protocol === 'any') {
+        if ($ports && $protocol === 'any') {
             return $this->fail('err_port_protocol');
         }
         $state = $this->firewallState($ipId);
@@ -454,13 +451,34 @@ class ClientActions
             return $wait;
         }
         $this->api->post('shield/ips/' . (int) $ipId . '/rules', [
-            'action' => $action,
+            'direction' => $direction,
+            'action' => $action === 'block' ? 'deny' : 'allow',
             'protocol' => $protocol,
-            'src_cidr' => $source !== '' ? $source : '0.0.0.0/0',
-            'dst_port' => $port !== '' ? (int) $port : null,
+            'source_type' => 'ip',
+            'source_value' => $source !== '' ? $source : '0.0.0.0/0',
+            'port_start' => $ports ? $ports[0] : null,
+            'port_end' => $ports ? $ports[1] : null,
         ]);
-        Repo::log($this->sid, 'firewall_add', true, ucfirst($action) . ' ' . $protocol . ($port !== '' ? ' port ' . $port : '') . ' from ' . ($source ?: 'anywhere'), null, $this->row->instance_id, 'client');
+        Repo::log($this->sid, 'firewall_add', true, ucfirst($action) . ' ' . $direction . ' ' . $protocol . ($ports ? ' port ' . $port : '') . ' ' . ($source ?: 'anywhere'), null, $this->row->instance_id, 'client');
         return $this->ok(['message' => Lang::t('js_rule_added')] + $this->firewallState($ipId));
+    }
+
+    /** "" => [] (all ports), "22" => [22, 22], "8000-8100" => [8000, 8100], invalid => false. */
+    public static function parsePorts($value)
+    {
+        $value = str_replace(' ', '', (string) $value);
+        if ($value === '') {
+            return [];
+        }
+        if (!preg_match('/^([0-9]{1,5})(?:[-:]([0-9]{1,5}))?$/', $value, $m)) {
+            return false;
+        }
+        $start = (int) $m[1];
+        $end = isset($m[2]) && $m[2] !== '' ? (int) $m[2] : $start;
+        if ($start < 1 || $end > 65535 || $end < $start) {
+            return false;
+        }
+        return [$start, $end];
     }
 
     private function actFirewallDelete()
@@ -493,14 +511,19 @@ class ClientActions
         list($ipId) = $this->shieldIp();
         $in = isset($_POST['in']) ? (string) $_POST['in'] : '';
         $out = isset($_POST['out']) ? (string) $_POST['out'] : '';
+        $enabled = !empty($_POST['enabled']) && $_POST['enabled'] !== '0';
         if (!$ipId || !in_array($in, ['allow', 'block'], true) || !in_array($out, ['allow', 'block'], true)) {
             return $this->fail('err_generic');
         }
         if ($wait = $this->cooldown('firewall', 2)) {
             return $wait;
         }
-        $this->api->put('shield/ips/' . (int) $ipId . '/policy', ['default_in' => $in, 'default_out' => $out]);
-        Repo::log($this->sid, 'firewall_policy', true, 'Default policy: in ' . $in . ', out ' . $out, null, $this->row->instance_id, 'client');
+        $this->api->put('shield/ips/' . (int) $ipId . '/policy', [
+            'inbound_default' => $in === 'block' ? 'drop' : 'accept',
+            'outbound_default' => $out === 'block' ? 'drop' : 'accept',
+            'enabled' => $enabled,
+        ]);
+        Repo::log($this->sid, 'firewall_policy', true, 'Firewall ' . ($enabled ? 'on' : 'off') . ', default in ' . $in . ', out ' . $out, null, $this->row->instance_id, 'client');
         return $this->ok(['message' => Lang::t('js_saved')] + $this->firewallState($ipId));
     }
 
@@ -539,20 +562,25 @@ class ClientActions
             if (!is_array($r) || !isset($r['id'])) {
                 continue;
             }
-            $port = isset($r['dst_port']) ? $r['dst_port'] : (isset($r['port']) ? $r['port'] : null);
+            $start = isset($r['port_start']) && $r['port_start'] !== null && $r['port_start'] !== '' ? (int) $r['port_start'] : null;
+            $end = isset($r['port_end']) && $r['port_end'] !== null && $r['port_end'] !== '' ? (int) $r['port_end'] : $start;
+            $type = strtolower(isset($r['source_type']) ? (string) $r['source_type'] : 'ip');
+            $value = Util::clean(isset($r['source_value']) ? $r['source_value'] : '', 64);
             $rules[] = [
                 'id' => (int) $r['id'],
+                'direction' => isset($r['direction']) && $r['direction'] === 'out' ? 'out' : 'in',
                 'action' => $norm(isset($r['action']) ? $r['action'] : 'allow'),
                 'protocol' => Util::clean(strtolower(isset($r['protocol']) ? $r['protocol'] : 'any'), 8),
-                'source' => Util::clean(isset($r['src_cidr']) ? $r['src_cidr'] : (isset($r['source']) ? $r['source'] : '0.0.0.0/0'), 64),
-                'port' => $port === null || $port === '' ? '' : (int) $port,
+                'port' => $start === null ? '' : ($end && $end !== $start ? $start . '-' . $end : (string) $start),
+                'source' => $type === 'ip' ? $value : strtoupper($type) . ' ' . $value,
+                'anywhere' => $type === 'ip' && in_array($value, ['', '0.0.0.0/0', '::/0'], true),
             ];
         }
         return [
-            'enabled' => !empty($policy['enabled']) || count($rules) > 0,
+            'enabled' => !empty($policy['enabled']),
             'policy' => [
-                'in' => $norm(isset($policy['inbound_default']) ? $policy['inbound_default'] : (isset($policy['default_in']) ? $policy['default_in'] : 'allow')),
-                'out' => $norm(isset($policy['outbound_default']) ? $policy['outbound_default'] : (isset($policy['default_out']) ? $policy['default_out'] : 'allow')),
+                'in' => $norm(isset($policy['inbound_default']) ? $policy['inbound_default'] : 'accept'),
+                'out' => $norm(isset($policy['outbound_default']) ? $policy['outbound_default'] : 'accept'),
             ],
             'rules' => $rules,
         ];

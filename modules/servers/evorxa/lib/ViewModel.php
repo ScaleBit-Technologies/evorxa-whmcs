@@ -42,14 +42,14 @@ class ViewModel
         $hostname = !empty($snap['hostname']) ? $snap['hostname'] : ($hosting ? $hosting->domain : '');
         $username = $hosting && $hosting->username ? $hosting->username : (isset($snap['username']) ? $snap['username'] : 'root');
 
-        $webRoot = rtrim((string) parse_url((string) \App::getSystemURL(), PHP_URL_PATH), '/');
+        $webRoot = self::webRoot();
         $apiUrl = $webRoot . '/clientarea.php?action=productdetails&id=' . $sid . '&modop=custom&a=api';
         $status = self::status($snap, $state, $t);
 
         $vm = [
-            'v' => self::VERSION,
+            'v' => self::assetVersion(),
             'tpl' => View::templatesDir(),
-            'assets' => $webRoot . '/modules/servers/evorxa/templates/assets',
+            'assets' => self::assetsUrl(),
             'serviceId' => $sid,
             'state' => $state,
             'rtl' => Lang::isRtl(),
@@ -59,6 +59,8 @@ class ViewModel
                 'ip' => Util::clean($ip, 64),
                 'os' => Util::clean($osLabel, 120),
                 'osFamily' => self::osFamily($osLabel),
+                'osLetter' => strtoupper(substr(self::osFamily($osLabel), 0, 1)),
+                'osLogo' => self::logo('os', self::osFamily($osLabel)),
                 'windows' => $windows,
                 'username' => Util::clean($username, 60),
                 'hasPassword' => $hosting && $hosting->password !== '',
@@ -72,6 +74,7 @@ class ViewModel
             'app' => self::app($row, $snap),
             'features' => $features,
             'hasTabs' => $features['graphs'] || $features['ddos'] || $features['firewall'] || $features['reinstall'],
+            'firstTab' => $features['graphs'] ? 'usage' : ($features['ddos'] ? 'ddos' : ($features['firewall'] ? 'firewall' : 'reinstall')),
             'cancelPending' => $row ? Keeper::pendingEndOfPeriodCancel($sid) : false,
         ];
 
@@ -188,16 +191,16 @@ class ViewModel
         $uplink = isset($snap['uplink']) ? $snap['uplink'] : ($plan && isset($plan['uplink']) ? $plan['uplink'] : null);
         $specs = [];
         if ($vcpu !== null) {
-            $specs[] = ['icon' => 'cpu', 'label' => self::tr($t, 'spec_cpu', 'vCPU'), 'value' => (int) $vcpu . ' ' . self::tr($t, 'unit_cores', 'cores')];
+            $specs[] = ['icon' => 'microchip', 'label' => self::tr($t, 'spec_cpu', 'vCPU'), 'value' => (int) $vcpu . ' ' . self::tr($t, 'unit_cores', 'cores')];
         }
         if ($ram !== null) {
-            $specs[] = ['icon' => 'ram', 'label' => self::tr($t, 'spec_ram', 'Memory'), 'value' => (int) $ram . ' GB'];
+            $specs[] = ['icon' => 'memory', 'label' => self::tr($t, 'spec_ram', 'Memory'), 'value' => (int) $ram . ' GB'];
         }
         if ($disk !== null) {
-            $specs[] = ['icon' => 'disk', 'label' => self::tr($t, 'spec_disk', 'NVMe storage'), 'value' => (int) $disk . ' GB'];
+            $specs[] = ['icon' => 'hdd', 'label' => self::tr($t, 'spec_disk', 'NVMe storage'), 'value' => (int) $disk . ' GB'];
         }
         if ($uplink) {
-            $specs[] = ['icon' => 'net', 'label' => self::tr($t, 'spec_network', 'Network'), 'value' => Util::clean($uplink, 40)];
+            $specs[] = ['icon' => 'network-wired', 'label' => self::tr($t, 'spec_network', 'Network'), 'value' => Util::clean($uplink, 40)];
         }
         return $specs;
     }
@@ -235,7 +238,43 @@ class ViewModel
             }
         } catch (\Throwable $e) {
         }
-        return ['slug' => Util::clean($slug, 64), 'name' => Util::clean($name ?: $slug, 60), 'note' => $note];
+        return ['slug' => Util::clean($slug, 64), 'name' => Util::clean($name ?: $slug, 60), 'note' => $note, 'logo' => self::logo('apps', $slug)];
+    }
+
+    public static function webRoot()
+    {
+        return rtrim((string) parse_url((string) \App::getSystemURL(), PHP_URL_PATH), '/');
+    }
+
+    public static function assetsUrl()
+    {
+        return self::webRoot() . '/modules/servers/evorxa/templates/assets';
+    }
+
+    /** Changes whenever the CSS or JS file changes, so long browser/CDN caching never serves stale assets. */
+    public static function assetVersion()
+    {
+        $dir = View::templatesDir() . '/assets/';
+        return self::VERSION . '.' . substr(md5(@filemtime($dir . 'evorxa.css') . '|' . @filemtime($dir . 'evorxa.js')), 0, 8);
+    }
+
+    /**
+     * URL of a bundled logo (templates/assets/logos/{os|apps}/<key>.svg|png), or '' to fall back to the letter badge.
+     * Drop your own files there to add or replace logos.
+     */
+    public static function logo($type, $key)
+    {
+        $key = strtolower(preg_replace('/[^a-z0-9_-]/i', '', (string) $key));
+        if ($key === '' || !in_array($type, ['os', 'apps'], true)) {
+            return '';
+        }
+        $dir = View::templatesDir() . '/assets/logos/' . $type . '/';
+        foreach (['svg', 'png', 'webp'] as $ext) {
+            if (is_file($dir . $key . '.' . $ext)) {
+                return self::assetsUrl() . '/logos/' . $type . '/' . $key . '.' . $ext;
+            }
+        }
+        return '';
     }
 
     public static function osFamily($label)
