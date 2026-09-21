@@ -1,0 +1,17 @@
+{
+    "schema": "1.0",
+    "type": "whmcs-servers",
+    "name": "evorxa",
+    "license": "proprietary",
+    "category": "provisioning",
+    "description": {
+        "name": "Evorxa Cloud",
+        "tagline": "Resell Evorxa VPS and VDS servers with automatic provisioning and a full client control panel."
+    },
+    "authors": [
+        {
+            "name": "ScaleBit Technologies",
+            "homepage": "https://evorxa.com/"
+        }
+    ]
+}
