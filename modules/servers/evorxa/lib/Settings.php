@@ -11,7 +11,7 @@ use WHMCS\Database\Capsule;
  */
 class Settings
 {
-    const FEATURES = ['power', 'password', 'reinstall', 'apps', 'graphs', 'ddos', 'firewall'];
+    const FEATURES = ['power', 'password', 'reinstall', 'apps', 'graphs', 'ddos', 'firewall', 'rdns'];
 
     private static $cache = null;
 
@@ -30,6 +30,7 @@ class Settings
             'feature_graphs' => '1',
             'feature_ddos' => '1',
             'feature_firewall' => '1',
+            'feature_rdns' => '1',
         ];
     }
 

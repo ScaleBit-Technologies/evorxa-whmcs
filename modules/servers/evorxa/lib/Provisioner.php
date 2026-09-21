@@ -38,6 +38,9 @@ class Provisioner
     public function create()
     {
         $hosting = Repo::hosting($this->sid);
+        if (!$hosting) {
+            return 'Service #' . $this->sid . ' was not found in WHMCS.';
+        }
         $cycle = Util::upstreamCycle($hosting->billingcycle, $this->option(3, 'match'));
         if (!$cycle) {
             return 'Evorxa servers need a recurring billing cycle; this service is "' . $hosting->billingcycle . '".';

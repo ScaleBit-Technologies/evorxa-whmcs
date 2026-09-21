@@ -25,15 +25,15 @@
             </div>
         </div>
         <div class="evx-stats">
-            <div class="evx-stat"><div class="evx-stat-label">{$evx.t.stat_cpu|escape}</div><div class="evx-stat-value" data-evx="stat-cpu">&ndash;</div><div class="evx-bar"><span data-evx="bar-cpu"></span></div></div>
-            <div class="evx-stat"><div class="evx-stat-label">{$evx.t.stat_memory|escape}</div><div class="evx-stat-value" data-evx="stat-mem">&ndash;</div><div class="evx-bar"><span data-evx="bar-mem"></span></div><div class="evx-stat-sub" data-evx="stat-mem-text"></div></div>
-            <div class="evx-stat"><div class="evx-stat-label">{$evx.t.stat_disk|escape}</div><div class="evx-stat-value" data-evx="stat-disk">&ndash;</div><div class="evx-bar"><span data-evx="bar-disk"></span></div><div class="evx-stat-sub" data-evx="stat-disk-text"></div></div>
-            <div class="evx-stat"><div class="evx-stat-label">{$evx.t.stat_traffic|escape}</div><div class="evx-stat-value evx-stat-small"><span>&darr; <span data-evx="stat-rx">&ndash;</span></span> <span>&uarr; <span data-evx="stat-tx">&ndash;</span></span></div><div class="evx-stat-sub">{$evx.t.stat_traffic_hint|escape}</div></div>
+            <div class="evx-stat"><div class="evx-stat-label">{$evx.t.stat_cpu|escape}</div><div class="evx-stat-value" data-evx="stat-cpu"><span class="evx-skel evx-skel-num"></span></div><div class="evx-bar"><span data-evx="bar-cpu"></span></div></div>
+            <div class="evx-stat"><div class="evx-stat-label">{$evx.t.stat_memory|escape}</div><div class="evx-stat-value" data-evx="stat-mem"><span class="evx-skel evx-skel-num"></span></div><div class="evx-bar"><span data-evx="bar-mem"></span></div><div class="evx-stat-sub" data-evx="stat-mem-text"></div></div>
+            <div class="evx-stat"><div class="evx-stat-label">{$evx.t.stat_disk|escape}</div><div class="evx-stat-value" data-evx="stat-disk"><span class="evx-skel evx-skel-num"></span></div><div class="evx-bar"><span data-evx="bar-disk"></span></div><div class="evx-stat-sub" data-evx="stat-disk-text"></div></div>
+            <div class="evx-stat"><div class="evx-stat-label">{$evx.t.stat_traffic|escape}</div><div class="evx-stat-value evx-stat-small"><span>&darr; <span data-evx="stat-rx"><span class="evx-skel evx-skel-inline"></span></span></span> <span>&uarr; <span data-evx="stat-tx"><span class="evx-skel evx-skel-inline"></span></span></span></div><div class="evx-stat-sub">{$evx.t.stat_traffic_hint|escape}</div></div>
         </div>
         <div class="evx-charts">
-            <figure class="evx-chart"><figcaption>{$evx.t.chart_cpu|escape}</figcaption><div class="evx-chart-box" data-chart="cpu"></div></figure>
-            <figure class="evx-chart"><figcaption>{$evx.t.chart_memory|escape}</figcaption><div class="evx-chart-box" data-chart="mem"></div></figure>
-            <figure class="evx-chart evx-chart-wide"><figcaption>{$evx.t.chart_network|escape}</figcaption><div class="evx-chart-box" data-chart="net"></div></figure>
+            <figure class="evx-chart"><figcaption>{$evx.t.chart_cpu|escape}</figcaption><div class="evx-chart-box" data-chart="cpu"><div class="evx-skel evx-skel-chart"></div></div></figure>
+            <figure class="evx-chart"><figcaption>{$evx.t.chart_memory|escape}</figcaption><div class="evx-chart-box" data-chart="mem"><div class="evx-skel evx-skel-chart"></div></div></figure>
+            <figure class="evx-chart evx-chart-wide"><figcaption>{$evx.t.chart_network|escape}</figcaption><div class="evx-chart-box" data-chart="net"><div class="evx-skel evx-skel-chart"></div></div></figure>
         </div>
     </div>
     {/if}
@@ -55,13 +55,13 @@
                     <button type="button" data-period="1w">{$evx.t.period_1w|escape}</button>
                 </div>
             </div>
-            <div class="evx-chart"><div class="evx-chart-box" data-chart="ddos"></div></div>
+            <div class="evx-chart"><div class="evx-chart-box" data-chart="ddos"><div class="evx-skel evx-skel-chart"></div></div></div>
 
             <h5 class="evx-h5">{$evx.t.ddos_attacks|escape}</h5>
             <div class="evx-table-wrap">
                 <table class="evx-table">
                     <thead><tr><th>{$evx.t.ddos_started|escape}</th><th>{$evx.t.ddos_duration|escape}</th><th>{$evx.t.ddos_vectors|escape}</th><th>{$evx.t.ddos_peak|escape}</th></tr></thead>
-                    <tbody data-evx="ddos-incidents"><tr><td colspan="4" class="evx-empty">{$evx.t.loading|escape}</td></tr></tbody>
+                    <tbody data-evx="ddos-incidents"><tr class="evx-skel-row"><td colspan="4"><span class="evx-skel evx-skel-line"></span></td></tr><tr class="evx-skel-row"><td colspan="4"><span class="evx-skel evx-skel-line"></span></td></tr><tr class="evx-skel-row"><td colspan="4"><span class="evx-skel evx-skel-line"></span></td></tr></tbody>
                 </table>
             </div>
 
@@ -85,7 +85,7 @@
             <div><strong>{$evx.t.fw_title|escape} <span class="evx-tag" data-evx="fw-state"></span></strong><div>{$evx.t.fw_intro|escape}</div></div>
         </div>
         <div data-evx="fw-unavailable" class="evx-empty" hidden>{$evx.t.fw_unavailable|escape}</div>
-        <div data-evx="fw-body" hidden>
+        <div data-evx="fw-body">
             <form class="evx-form evx-policy" data-evx="fw-policy">
                 <label class="evx-switch evx-policy-switch">
                     <input type="checkbox" name="enabled" value="1">
@@ -104,10 +104,11 @@
             </form>
 
             <h5 class="evx-h5">{$evx.t.fw_rules|escape}</h5>
+            <p class="evx-sub evx-order-hint"><i class="fas fa-grip-vertical" aria-hidden="true"></i> {$evx.t.fw_order_hint|escape}</p>
             <div class="evx-table-wrap">
                 <table class="evx-table">
-                    <thead><tr><th>{$evx.t.fw_action|escape}</th><th>{$evx.t.fw_direction|escape}</th><th>{$evx.t.fw_protocol|escape}</th><th>{$evx.t.fw_port|escape}</th><th>{$evx.t.fw_source|escape}</th><th></th></tr></thead>
-                    <tbody data-evx="fw-rules"></tbody>
+                    <thead><tr><th class="evx-grip-col"></th><th>{$evx.t.fw_action|escape}</th><th>{$evx.t.fw_direction|escape}</th><th>{$evx.t.fw_protocol|escape}</th><th>{$evx.t.fw_port|escape}</th><th>{$evx.t.fw_source|escape}</th><th></th></tr></thead>
+                    <tbody data-evx="fw-rules"><tr class="evx-skel-row"><td colspan="7"><span class="evx-skel evx-skel-line"></span></td></tr><tr class="evx-skel-row"><td colspan="7"><span class="evx-skel evx-skel-line"></span></td></tr><tr class="evx-skel-row"><td colspan="7"><span class="evx-skel evx-skel-line"></span></td></tr></tbody>
                 </table>
             </div>
 
@@ -141,7 +142,7 @@
             <button type="button" data-mode="os" class="is-active">{$evx.t.reinstall_os|escape}</button>
             <button type="button" data-mode="app">{$evx.t.reinstall_app|escape}</button>
         </div>
-        <div class="evx-picker" data-evx="os-list"><div class="evx-empty">{$evx.t.loading|escape}</div></div>
+        <div class="evx-picker" data-evx="os-list"><div class="evx-skel evx-skel-card"></div><div class="evx-skel evx-skel-card"></div><div class="evx-skel evx-skel-card"></div><div class="evx-skel evx-skel-card"></div><div class="evx-skel evx-skel-card"></div><div class="evx-skel evx-skel-card"></div></div>
         <div class="evx-picker evx-apps" data-evx="app-list" hidden></div>
         <form class="evx-form" data-evx="reinstall-form">
             <label class="evx-check">

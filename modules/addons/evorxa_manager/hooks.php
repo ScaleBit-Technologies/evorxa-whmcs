@@ -32,12 +32,13 @@ add_hook('AfterCronJob', 1, function () {
  */
 add_hook('CancellationRequest', 1, function ($vars) {
     $serviceId = isset($vars['relid']) ? (int) $vars['relid'] : 0;
-    if (!$serviceId || !Repo::find($serviceId)) {
-        return;
-    }
     try {
+        if (!$serviceId || !Repo::find($serviceId)) {
+            return;
+        }
         Keeper::forService($serviceId);
     } catch (\Throwable $e) {
+        // Never block the client's cancellation request; the hourly keeper retries.
         Repo::log($serviceId, 'cancel_request', false, $e->getMessage());
     }
 });

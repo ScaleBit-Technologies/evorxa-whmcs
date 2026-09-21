@@ -31,6 +31,8 @@ class ClientActions
         'firewall_add' => 'firewall',
         'firewall_delete' => 'firewall',
         'firewall_policy' => 'firewall',
+        'firewall_order' => 'firewall',
+        'rdns_save' => 'rdns',
     ];
 
     const METRIC_PERIODS = ['1h', '6h', '24h'];
@@ -385,7 +387,9 @@ class ClientActions
             }
             return ['items' => $items, 'total' => (int) (isset($raw['total_items']) ? $raw['total_items'] : count($items))];
         });
-        $settings = $this->api->get($this->instancePath('ddos/settings'), [], ['low' => true]);
+        $settings = Cache::remember('ddos-settings:' . $this->sid, 300, function () {
+            return $this->api->get($this->instancePath('ddos/settings'), [], ['low' => true]);
+        });
         return $this->ok([
             'supported' => $overview['supported'],
             'points' => $overview['points'],
@@ -404,7 +408,8 @@ class ClientActions
         if ($wait = $this->cooldown('ddos_save', 5)) {
             return $wait;
         }
-        $this->api->put($this->instancePath('ddos/settings'), $body);
+        $saved = $this->api->put($this->instancePath('ddos/settings'), $body);
+        Cache::set('ddos-settings:' . $this->sid, is_array($saved) && isset($saved['email_notifications']) ? $saved : $body, 300);
         Repo::log($this->sid, 'ddos_settings', true, 'Attack alert settings updated', null, $this->row->instance_id, 'client');
         return $this->ok(['message' => Lang::t('js_saved')]);
     }
@@ -417,7 +422,19 @@ class ClientActions
         if (!$ipId) {
             return $this->ok(['available' => false]);
         }
-        return $this->ok(['available' => true, 'address' => $address] + $this->firewallState($ipId));
+        // Reads are cached briefly; every change below writes the fresh state back.
+        $state = Cache::remember('fw:' . $this->sid, 30, function () use ($ipId) {
+            return $this->firewallState($ipId);
+        });
+        return $this->ok(['available' => true, 'address' => $address] + $state);
+    }
+
+    /** Fresh firewall state after a change, also stored for the next read. */
+    private function firewallChanged($ipId)
+    {
+        $state = $this->firewallState($ipId);
+        Cache::set('fw:' . $this->sid, $state, 30);
+        return ['available' => true] + $state;
     }
 
     private function actFirewallAdd()
@@ -451,7 +468,12 @@ class ClientActions
         if ($wait = $this->cooldown('firewall', 2)) {
             return $wait;
         }
+        $last = 0;
+        foreach ($state['rules'] as $rule) {
+            $last = max($last, $rule['priority']);
+        }
         $this->api->post('shield/ips/' . (int) $ipId . '/rules', [
+            'priority' => $last + 10, // new rules go to the bottom of the list
             'direction' => $direction,
             'action' => $action === 'block' ? 'deny' : 'allow',
             'protocol' => $protocol,
@@ -461,7 +483,7 @@ class ClientActions
             'port_end' => $ports ? $ports[1] : null,
         ]);
         Repo::log($this->sid, 'firewall_add', true, ucfirst($action) . ' ' . $direction . ' ' . $protocol . ($ports ? ' port ' . $port : '') . ' ' . ($source ?: 'anywhere'), null, $this->row->instance_id, 'client');
-        return $this->ok(['message' => Lang::t('js_rule_added')] + $this->firewallState($ipId));
+        return $this->ok(['message' => Lang::t('js_rule_added')] + $this->firewallChanged($ipId));
     }
 
     /** "" => [] (all ports), "22" => [22, 22], "8000-8100" => [8000, 8100], invalid => false. */
@@ -504,7 +526,7 @@ class ClientActions
         }
         $this->api->delete('shield/ips/' . (int) $ipId . '/rules/' . $ruleId);
         Repo::log($this->sid, 'firewall_delete', true, 'Rule #' . $ruleId . ' deleted', null, $this->row->instance_id, 'client');
-        return $this->ok(['message' => Lang::t('js_rule_deleted')] + $this->firewallState($ipId));
+        return $this->ok(['message' => Lang::t('js_rule_deleted')] + $this->firewallChanged($ipId));
     }
 
     private function actFirewallPolicy()
@@ -525,7 +547,88 @@ class ClientActions
             'enabled' => $enabled,
         ]);
         Repo::log($this->sid, 'firewall_policy', true, 'Firewall ' . ($enabled ? 'on' : 'off') . ', default in ' . $in . ', out ' . $out, null, $this->row->instance_id, 'client');
-        return $this->ok(['message' => Lang::t('js_saved')] + $this->firewallState($ipId));
+        return $this->ok(['message' => Lang::t('js_saved')] + $this->firewallChanged($ipId));
+    }
+
+    /**
+     * Reorder rules (drag and drop). "order" lists every current rule id top to bottom;
+     * priorities become 10, 20, 30... and only rules whose priority changes are updated.
+     */
+    private function actFirewallOrder()
+    {
+        list($ipId) = $this->shieldIp();
+        if (!$ipId) {
+            return $this->fail('err_unavailable');
+        }
+        $ids = array_values(array_filter(array_map('intval', explode(',', isset($_POST['order']) ? (string) $_POST['order'] : ''))));
+        $state = $this->firewallState($ipId);
+        $current = [];
+        foreach ($state['rules'] as $rule) {
+            $current[$rule['id']] = $rule['priority'];
+        }
+        $sortedIds = $ids;
+        sort($sortedIds);
+        $sortedCurrent = array_keys($current);
+        sort($sortedCurrent);
+        if (!$ids || $sortedIds !== $sortedCurrent) {
+            // Stale page or foreign ids: refuse and hand back the real list.
+            return ['ok' => false, 'error' => Lang::t('err_rules_changed'), 'code' => 'err_rules_changed', 'data' => ['available' => true] + $state];
+        }
+        if ($wait = $this->cooldown('firewall', 2)) {
+            return $wait;
+        }
+        foreach ($ids as $i => $id) {
+            $priority = ($i + 1) * 10;
+            if ($current[$id] !== $priority) {
+                $this->api->put('shield/ips/' . (int) $ipId . '/rules/' . $id, ['priority' => $priority]);
+            }
+        }
+        Repo::log($this->sid, 'firewall_order', true, 'Rule order: ' . implode(', ', $ids), null, $this->row->instance_id, 'client');
+        return $this->ok(['message' => Lang::t('js_order_saved')] + $this->firewallChanged($ipId));
+    }
+
+    /** Change the reverse DNS of one of this server's IP addresses. */
+    private function actRdnsSave()
+    {
+        $address = trim(isset($_POST['address']) ? (string) $_POST['address'] : '');
+        $rdns = strtolower(trim(isset($_POST['rdns']) ? (string) $_POST['rdns'] : '', " .\t\r\n"));
+        if (!Util::validFqdn($rdns)) {
+            return $this->fail('err_rdns');
+        }
+        // Only addresses Evorxa lists for *this* instance are accepted.
+        $ipId = 0;
+        foreach ((array) $this->api->get('shield/ips', [], ['low' => true]) as $ip) {
+            if (is_array($ip) && isset($ip['instance_id'], $ip['address'], $ip['id'])
+                && (string) $ip['instance_id'] === (string) $this->row->instance_id && (string) $ip['address'] === $address) {
+                $ipId = (int) $ip['id'];
+                break;
+            }
+        }
+        if (!$ipId) {
+            return $this->fail('err_unavailable');
+        }
+        if ($wait = $this->cooldown('rdns', 10)) {
+            return $wait;
+        }
+        try {
+            $this->api->put('shield/ips/' . $ipId . '/rdns', ['rdns' => $rdns]);
+        } catch (ApiException $e) {
+            if ($e->status() === 422) {
+                return $this->fail('err_rdns');
+            }
+            throw $e;
+        }
+        if (!empty($this->snap['ip_addresses'])) {
+            foreach ($this->snap['ip_addresses'] as &$ip) {
+                if ($ip['address'] === $address) {
+                    $ip['rdns'] = $rdns;
+                }
+            }
+            unset($ip);
+            Repo::update($this->sid, ['snapshot' => json_encode($this->snap)]);
+        }
+        Repo::log($this->sid, 'rdns', true, 'rDNS of ' . $address . ' set to ' . $rdns, null, $this->row->instance_id, 'client');
+        return $this->ok(['address' => $address, 'rdns' => $rdns, 'message' => Lang::t('js_rdns_saved')]);
     }
 
     /** Shield IP record of this server's primary address, resolved server-side. */
@@ -569,6 +672,7 @@ class ClientActions
             $value = Util::clean(isset($r['source_value']) ? $r['source_value'] : '', 64);
             $rules[] = [
                 'id' => (int) $r['id'],
+                'priority' => isset($r['priority']) ? (int) $r['priority'] : 100,
                 'direction' => isset($r['direction']) && $r['direction'] === 'out' ? 'out' : 'in',
                 'action' => $norm(isset($r['action']) ? $r['action'] : 'allow'),
                 'protocol' => Util::clean(strtolower(isset($r['protocol']) ? $r['protocol'] : 'any'), 8),
@@ -577,6 +681,10 @@ class ClientActions
                 'anywhere' => $type === 'ip' && in_array($value, ['', '0.0.0.0/0', '::/0'], true),
             ];
         }
+        // Evorxa evaluates lower priority first; show them in that order.
+        usort($rules, function ($a, $b) {
+            return $a['priority'] === $b['priority'] ? $a['id'] - $b['id'] : $a['priority'] - $b['priority'];
+        });
         return [
             'enabled' => !empty($policy['enabled']),
             'policy' => [

@@ -1,44 +1,80 @@
 <div class="evxm-grid">
-    <div class="evxm-stat"><small>Evorxa wallet</small><strong>{if $account}{$account.balance|escape}{else}-{/if}</strong>{if $account && $account.low} <span class="evxm-badge evxm-warn">low</span>{/if}</div>
-    <div class="evxm-stat"><small>Next Evorxa renewal</small><strong style="font-size:14px">{if $account}{$account.renewal|escape}{else}-{/if}</strong></div>
-    <div class="evxm-stat"><small>Active servers</small><strong>{if $counts.active}{$counts.active}{else}0{/if}</strong>{if $counts.provisioning} <span class="evxm-badge evxm-busy">{$counts.provisioning} building</span>{/if}</div>
-    <div class="evxm-stat"><small>Need attention</small><strong>{$attentionCount}</strong></div>
+    <div class="evxm-kpi">
+        <span class="evxm-kpi-ic{if $account && $account.low} warn{/if}"><i class="fas fa-wallet"></i></span>
+        <div>
+            <small>Evorxa wallet</small>
+            <strong>{if $account}{$account.balance|escape}{else}&ndash;{/if}</strong>
+            <div class="evxm-sub">{if $account && $account.low}<span class="evxm-badge evxm-warn">below your alert level</span> <a href="{$consoleUrl}" target="_blank" rel="noopener">Top up</a>{else}Used to pay for servers and renewals{/if}</div>
+        </div>
+    </div>
+    <div class="evxm-kpi">
+        <span class="evxm-kpi-ic ink"><i class="far fa-calendar-alt"></i></span>
+        <div>
+            <small>Next Evorxa renewal</small>
+            <strong>{if $account}{$account.renewalAmount|escape}{else}&ndash;{/if}</strong>
+            <div class="evxm-sub">{if $account}{$account.renewalWhen|escape}{if $account.renewalWhen} · {/if}auto-renew {if $account.autoRenew}on{else}off{/if}{/if}</div>
+        </div>
+    </div>
+    <div class="evxm-kpi">
+        <span class="evxm-kpi-ic ok"><i class="fas fa-server"></i></span>
+        <div>
+            <small>Client servers</small>
+            <strong>{if $counts.active}{$counts.active}{else}0{/if} <span style="font-size:13px;font-weight:600;color:#6b7280">active</span></strong>
+            <div class="evxm-sub">{if $counts.provisioning}<span class="evxm-badge evxm-busy">{$counts.provisioning} building</span> {/if}{if $counts.terminated}{$counts.terminated} closed{/if}</div>
+        </div>
+    </div>
+    <div class="evxm-kpi">
+        <span class="evxm-kpi-ic{if !$attentionCount} ok{/if}"><i class="fas {if $attentionCount}fa-exclamation-triangle{else}fa-check{/if}"></i></span>
+        <div>
+            <small>Needs attention</small>
+            <strong>{$attentionCount}</strong>
+            <div class="evxm-sub">{if $attentionCount}Failed or unconfirmed orders{else}All good{/if}</div>
+        </div>
+    </div>
 </div>
 
 <div class="row">
-    <div class="col-md-6">
+    <div class="col-lg-7">
         <div class="evxm-card">
-            <h3>Setup checklist</h3>
+            <h3><i class="fas fa-rocket" style="color:#e2445c"></i> Setup <span class="evxm-right evxm-muted">{$progress.done} of {$progress.total} complete</span></h3>
+            <div class="evxm-progress"><span style="width:{$progress.pct}%"></span></div>
             {foreach $checks as $c}
                 <div class="evxm-check">
-                    <span class="ic">{if $c.ok}<i class="fas fa-check-circle ok"></i>{else}<i class="fas fa-exclamation-circle no"></i>{/if}</span>
-                    <div>
-                        <div><a href="{$c.url}">{$c.label|escape}</a></div>
+                    <span class="ic {if $c.ok}ok{else}no{/if}"><i class="fas {if $c.ok}fa-check{else}fa-exclamation{/if}"></i></span>
+                    <div class="txt">
+                        <div>{$c.label|escape}</div>
                         {if !$c.ok}<div class="evxm-muted">{$c.hint|escape}</div>{/if}
                     </div>
+                    <a class="btn btn-{if $c.ok}link{else}default{/if} btn-sm" href="{$c.url}">{if $c.ok}View{else}Fix{/if}</a>
                 </div>
             {/foreach}
         </div>
-        {if $account}
+
         <div class="evxm-card">
-            <h3>Evorxa account</h3>
-            <p class="evxm-muted" style="margin:0 0 6px">Connected as <strong>{$account.email|escape}</strong>{if $server} via server <a href="configservers.php?action=manage&amp;id={$server.id}">{$server.name|escape}</a>{/if}.</p>
-            <p class="evxm-muted" style="margin:0 0 10px">Account auto-renew: <strong>{if $account.autoRenew}on{else}off{/if}</strong>. {if $account.autoRenew}Evorxa renews each server from your wallet 5 days before it expires; the module only reactivates or stops servers to match what clients paid.{else}The module extends each server only after the client has paid.{/if}</p>
-            <form method="post" action="{$link}&amp;page=dashboard" style="display:inline">
-                <input type="hidden" name="token" value="{$csrf}"><input type="hidden" name="evx_action" value="check_balance">
-                <button class="btn btn-default btn-sm" type="submit"><i class="fas fa-wallet"></i> Check wallet now</button>
-            </form>
-            <form method="post" action="{$link}&amp;page=dashboard" style="display:inline">
-                <input type="hidden" name="token" value="{$csrf}"><input type="hidden" name="evx_action" value="run_sync">
-                <button class="btn btn-default btn-sm" type="submit"><i class="fas fa-sync-alt"></i> Run sync now</button>
-            </form>
+            <h3><i class="fas fa-history"></i> Recent activity <a class="evxm-right" href="{$link}&amp;page=log">View all</a></h3>
+            {include file="`$tplDir`/admin/addon/logtable.tpl" logs=$recent}
         </div>
-        {/if}
     </div>
-    <div class="col-md-6">
+
+    <div class="col-lg-5">
         <div class="evxm-card">
-            <h3>Needs attention</h3>
+            <h3><i class="fas fa-chart-line"></i> Monthly economics</h3>
+            {if $finance && $finance.count}
+                <div class="evxm-money">
+                    <div><small>Clients pay</small><strong>{$finance.revenue|escape}</strong></div>
+                    <div><small>Evorxa cost</small><strong>{$finance.cost|escape}</strong></div>
+                    <div><small>Margin</small><strong class="{if $finance.negative}neg{else}pos{/if}">{$finance.margin|escape}</strong> <span class="evxm-muted">{$finance.marginPct}%</span></div>
+                </div>
+                <p class="evxm-muted" style="margin:10px 0 0">Across {$finance.count} active server(s), per month.{if !$finance.costKnown} Some plans are no longer in the Evorxa catalogue, so the cost is incomplete.{/if}</p>
+            {else}
+                <p class="evxm-muted" style="margin:0">Appears once you have active client servers.</p>
+            {/if}
+        </div>
+
+        <div class="evxm-card">
+            <h3><i class="fas fa-bell"></i> Needs attention</h3>
             {if $attention}
+                <div class="evxm-table" style="margin:0">
                 <table class="table table-condensed">
                     {foreach $attention as $a}
                         <tr>
@@ -48,13 +84,29 @@
                         </tr>
                     {/foreach}
                 </table>
+                </div>
             {else}
-                <p class="evxm-muted" style="margin:0">Nothing to do. Failed or unconfirmed orders show up here.</p>
+                <div class="evxm-empty"><i class="fas fa-check-circle"></i>Nothing needs your attention.</div>
             {/if}
         </div>
+
+        {if $account}
         <div class="evxm-card">
-            <h3>Recent activity <a class="evxm-muted" style="font-weight:400" href="{$link}&amp;page=log">(all)</a></h3>
-            {include file="`$tplDir`/admin/addon/logtable.tpl" logs=$recent}
+            <h3><i class="fas fa-plug"></i> Connection</h3>
+            <p style="margin:0 0 4px">Connected as <strong>{$account.email|escape}</strong></p>
+            <p class="evxm-muted" style="margin:0">{if $server}Server <a href="configservers.php?action=manage&amp;id={$server.id}">{$server.name|escape}</a>. {/if}{if $account.autoRenew}Evorxa renews each server from your wallet 5 days before it expires; the module reactivates or stops servers to match what clients paid.{else}The module extends each server only after its client has paid.{/if}</p>
+            <div class="evxm-actions">
+                <form method="post" action="{$link}&amp;page=dashboard">
+                    <input type="hidden" name="token" value="{$csrf}"><input type="hidden" name="evx_action" value="check_balance">
+                    <button class="btn btn-default btn-sm" type="submit"><i class="fas fa-wallet"></i> Check wallet</button>
+                </form>
+                <form method="post" action="{$link}&amp;page=dashboard">
+                    <input type="hidden" name="token" value="{$csrf}"><input type="hidden" name="evx_action" value="run_sync">
+                    <button class="btn btn-default btn-sm" type="submit"><i class="fas fa-sync-alt"></i> Sync now</button>
+                </form>
+                <a class="btn btn-default btn-sm" href="{$link}&amp;page=plans"><i class="fas fa-file-import"></i> Import plans</a>
+            </div>
         </div>
+        {/if}
     </div>
 </div>

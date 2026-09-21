@@ -106,6 +106,102 @@
         toast((err && err.message) || t('js_error'), 'bad');
     }
 
+    // ------------------------------------------------------------------ cache (stale-while-revalidate)
+
+    // Per tab session and service; the asset version in the key drops everything after an update.
+    var memo = {};
+    var cachePrefix = 'evx:' + boot.sid + ':' + boot.v + ':';
+
+    function cacheKey(action, params) {
+        return cachePrefix + action + ':' + JSON.stringify(params || {});
+    }
+
+    function cacheGet(action, params) {
+        var key = cacheKey(action, params);
+        if (memo[key]) {
+            return memo[key];
+        }
+        try {
+            var raw = window.sessionStorage.getItem(key);
+            if (raw) {
+                memo[key] = JSON.parse(raw);
+                return memo[key];
+            }
+        } catch (e) {
+            // Private mode or storage full: memory cache only.
+        }
+        return null;
+    }
+
+    function cacheSet(action, params, data) {
+        var key = cacheKey(action, params);
+        memo[key] = { at: Date.now(), data: data };
+        try {
+            window.sessionStorage.setItem(key, JSON.stringify(memo[key]));
+        } catch (e) {
+        }
+    }
+
+    function cacheDrop(action) {
+        var start = cachePrefix + action + ':';
+        Object.keys(memo).forEach(function (k) {
+            if (k.indexOf(start) === 0) {
+                delete memo[k];
+            }
+        });
+        try {
+            for (var i = window.sessionStorage.length - 1; i >= 0; i--) {
+                var k = window.sessionStorage.key(i);
+                if (k && k.indexOf(start) === 0) {
+                    window.sessionStorage.removeItem(k);
+                }
+            }
+        } catch (e) {
+        }
+    }
+
+    /**
+     * Render cached data immediately (if any), then refresh from the server unless the cache is
+     * younger than ttl. render(data, fromCache) can therefore run twice.
+     */
+    function load(action, params, ttl, render, opts) {
+        opts = opts || {};
+        var hit = opts.force ? null : cacheGet(action, params);
+        // A rendering bug must never take the whole panel down: surface it as a normal error.
+        var safeRender = function (data, fromCache) {
+            try {
+                render(data, fromCache);
+            } catch (e) {
+                if (window.console) {
+                    console.error('evorxa panel:', e);
+                }
+                throw new ApiError(t('js_error'), 'render');
+            }
+        };
+        if (hit) {
+            try {
+                safeRender(hit.data, true);
+            } catch (e) {
+                hit = null; // bad cached copy: ignore it and fetch fresh data
+            }
+            if (hit && Date.now() - hit.at < ttl) {
+                return Promise.resolve(hit.data);
+            }
+        }
+        return api(action, params).then(function (d) {
+            cacheSet(action, params, d);
+            if (!hit || JSON.stringify(hit.data) !== JSON.stringify(d)) {
+                safeRender(d, false); // unchanged data: no flicker, no lost selections
+            }
+            return d;
+        }, function (err) {
+            if (!hit) {
+                throw err;
+            }
+            return hit.data; // keep showing the cached copy
+        });
+    }
+
     function toast(message, tone) {
         var box = hook('toasts');
         if (!box || !message) {
@@ -695,6 +791,35 @@
         });
     }
 
+    /**
+     * A tab failed to load: replace its skeletons with a message and a Retry button
+     * (instead of leaving placeholders shimmering forever).
+     */
+    function panelError(name, err) {
+        var panel = root.querySelector('[data-panel="' + name + '"]');
+        if (!panel) {
+            return;
+        }
+        loaded[name] = false;
+        var box = panel.querySelector('.evx-panel-error');
+        if (!box) {
+            box = el('div', { className: 'evx-panel-error', role: 'alert' });
+            panel.insertBefore(box, panel.firstChild);
+        }
+        clear(box);
+        box.appendChild(el('i', { className: 'fas fa-exclamation-circle', 'aria-hidden': 'true' }));
+        box.appendChild(el('span', null, (err && err.message) || t('js_error')));
+        var retry = el('button', { type: 'button', className: 'btn btn-default btn-sm' }, t('js_retry'));
+        retry.addEventListener('click', function () {
+            box.parentNode.removeChild(box);
+            panel.classList.remove('has-error');
+            loaded[name] = true;
+            loaders[name](true);
+        });
+        box.appendChild(retry);
+        panel.classList.add('has-error');
+    }
+
     function panelLoading(name, on) {
         var p = root.querySelector('[data-panel="' + name + '"]');
         if (p) {
@@ -718,10 +843,48 @@
         node.classList.toggle('is-full', v >= 90);
     }
 
-    loaders.usage = function loadUsage() {
+    var rendered = {};
+
+    /** Swap charts back to shimmer placeholders while a new period loads. */
+    function skeletonCharts(names) {
+        names.forEach(function (name) {
+            var box = root.querySelector('[data-chart="' + name + '"]');
+            if (!box) {
+                return;
+            }
+            clear(box);
+            box.appendChild(el('div', { className: 'evx-skel evx-skel-chart' }));
+            var legend = box.parentNode.querySelector('.evx-legend');
+            if (legend) {
+                legend.parentNode.removeChild(legend);
+            }
+        });
+    }
+
+    loaders.usage = function loadUsage(force) {
         clearTimeout(usageTimer);
-        panelLoading('usage', true);
-        api('metrics', { period: usagePeriod }).then(function (d) {
+        var period = usagePeriod;
+        if (rendered.usage && !cacheGet('metrics', { period: period })) {
+            skeletonCharts(['cpu', 'mem', 'net']); // period switch without cached data
+        }
+        load('metrics', { period: period }, 55000, function (d) {
+            if (period === usagePeriod) {
+                renderUsage(d);
+            }
+        }, { force: force }).catch(function (err) { panelError('usage', err); }).then(function () {
+            panelLoading('usage', false);
+            usageTimer = setTimeout(function () {
+                if (activeTab === 'usage' && !document.hidden) {
+                    loaders.usage(true);
+                } else {
+                    loaded.usage = false;
+                }
+            }, 60000);
+        });
+    };
+
+    function renderUsage(d) {
+            rendered.usage = true;
             var c = d.current || {};
             hook('stat-cpu').textContent = fmtPct(c.cpu);
             hook('stat-mem').textContent = fmtPct(c.memPct);
@@ -741,17 +904,7 @@
                 { label: t('js_net_in'), color: '#0ea5e9', points: pts.map(function (p) { return [p[0], p[4]]; }) },
                 { label: t('js_net_out'), color: '#f59e0b', points: pts.map(function (p) { return [p[0], p[5]]; }) }
             ]);
-        }, fail).then(function () {
-            panelLoading('usage', false);
-            usageTimer = setTimeout(function () {
-                if (activeTab === 'usage' && !document.hidden) {
-                    loaders.usage();
-                } else {
-                    loaded.usage = false;
-                }
-            }, 60000);
-        });
-    };
+    }
     segment('usage-period', function (p) {
         usagePeriod = p;
         loaders.usage();
@@ -763,10 +916,32 @@
     var ddosTimer = null;
     var ddosSettings = { email: false };
 
-    loaders.ddos = function loadDdos() {
+    loaders.ddos = function loadDdos(force) {
         clearTimeout(ddosTimer);
-        panelLoading('ddos', true);
-        api('ddos', { period: ddosPeriod }).then(function (d) {
+        var period = ddosPeriod;
+        if (rendered.ddos && !cacheGet('ddos', { period: period })) {
+            skeletonCharts(['ddos']);
+        }
+        load('ddos', { period: period }, period === 'live' ? 15000 : 110000, function (d) {
+            if (period === ddosPeriod) {
+                renderDdos(d);
+            }
+        }, { force: force }).catch(function (err) { panelError('ddos', err); }).then(function () {
+            panelLoading('ddos', false);
+            if (ddosPeriod === 'live') {
+                ddosTimer = setTimeout(function () {
+                    if (activeTab === 'ddos' && !document.hidden) {
+                        loaders.ddos(true);
+                    } else {
+                        loaded.ddos = false;
+                    }
+                }, 20000);
+            }
+        });
+    };
+
+    function renderDdos(d) {
+            rendered.ddos = true;
             hook('ddos-unsupported').hidden = d.supported;
             hook('ddos-body').hidden = !d.supported;
             if (!d.supported) {
@@ -795,19 +970,7 @@
             }
             ddosSettings = d.settings || ddosSettings;
             renderDdosSettings();
-        }, fail).then(function () {
-            panelLoading('ddos', false);
-            if (ddosPeriod === 'live') {
-                ddosTimer = setTimeout(function () {
-                    if (activeTab === 'ddos' && !document.hidden) {
-                        loaders.ddos();
-                    } else {
-                        loaded.ddos = false;
-                    }
-                }, 20000);
-            }
-        });
-    };
+    }
     segment('ddos-period', function (p) {
         ddosPeriod = p;
         loaders.ddos();
@@ -828,6 +991,7 @@
             setBusy(btn, true);
             api('ddos_save', { email: ddosForm.elements.email.checked ? 1 : 0 }).then(function (d) {
                 ddosSettings.email = ddosForm.elements.email.checked;
+                cacheDrop('ddos');
                 toast(d.message || t('js_saved'), 'ok');
             }, fail).then(function () { setBusy(btn, false); });
         });
@@ -855,14 +1019,22 @@
         fwRules = d.rules || [];
         var body = hook('fw-rules');
         clear(body);
+        root.querySelector('.evx-order-hint').hidden = fwRules.length < 2;
         if (!fwRules.length) {
             var row = el('tr');
-            row.appendChild(el('td', { colspan: 6, className: 'evx-empty' }, t('js_fw_no_rules')));
+            row.appendChild(el('td', { colspan: 7, className: 'evx-empty' }, t('js_fw_no_rules')));
             body.appendChild(row);
             return;
         }
-        fwRules.forEach(function (r) {
-            var tr = el('tr');
+        fwRules.forEach(function (r, index) {
+            var tr = el('tr', { 'data-id': r.id });
+            var gripCell = el('td');
+            if (fwRules.length > 1) {
+                var grip = el('button', { type: 'button', className: 'evx-grip', title: t('js_fw_drag'), 'aria-label': t('js_fw_drag') + ' (' + (index + 1) + ')' });
+                grip.appendChild(el('i', { className: 'fas fa-grip-vertical', 'aria-hidden': 'true' }));
+                gripCell.appendChild(grip);
+            }
+            tr.appendChild(gripCell);
             var action = el('td');
             action.appendChild(el('span', { className: 'evx-tag ' + (r.action === 'block' ? 'evx-tag-bad' : 'evx-tag-ok') }, r.action === 'block' ? t('js_fw_block') : t('js_fw_allow')));
             tr.appendChild(action);
@@ -879,10 +1051,111 @@
         });
     }
 
-    loaders.firewall = function loadFirewall() {
-        panelLoading('firewall', true);
-        api('firewall').then(renderFirewall, fail).then(function () { panelLoading('firewall', false); });
+    loaders.firewall = function loadFirewall(force) {
+        load('firewall', {}, 25000, renderFirewall, { force: force }).catch(function (err) { panelError('firewall', err); });
     };
+
+    /** Result of a firewall change: show it and keep it as the cached state. */
+    function applyFirewall(d) {
+        cacheSet('firewall', {}, d);
+        renderFirewall(d);
+    }
+
+    // Drag rows by the grip (mouse, pen or touch) to change the order; arrow keys work on a focused grip.
+    var drag = null;
+    var keyTimer = null;
+
+    function rowOrder() {
+        return all('tr[data-id]', hook('fw-rules')).map(function (tr) { return tr.getAttribute('data-id'); });
+    }
+
+    function saveOrder(order, previous) {
+        if (order.join(',') === previous.join(',')) {
+            return;
+        }
+        api('firewall_order', { order: order.join(',') }).then(function (d) {
+            applyFirewall(d);
+            toast(d.message || t('js_order_saved'), 'ok');
+        }, function (err) {
+            fail(err);
+            loaders.firewall(); // put the real order back
+        });
+    }
+
+    root.addEventListener('pointerdown', function (e) {
+        var grip = e.target.closest('.evx-grip');
+        if (!grip || (e.pointerType === 'mouse' && e.button !== 0)) {
+            return;
+        }
+        e.preventDefault();
+        var row = grip.closest('tr');
+        drag = { row: row, body: row.parentNode, before: rowOrder(), id: e.pointerId };
+        row.classList.add('is-dragging');
+        root.classList.add('is-sorting');
+        try {
+            grip.setPointerCapture(e.pointerId);
+        } catch (err) {
+        }
+    });
+
+    root.addEventListener('pointermove', function (e) {
+        if (!drag || e.pointerId !== drag.id) {
+            return;
+        }
+        var rows = all('tr[data-id]', drag.body).filter(function (r) { return r !== drag.row; });
+        var target = null;
+        for (var i = 0; i < rows.length; i++) {
+            var rect = rows[i].getBoundingClientRect();
+            if (e.clientY < rect.top + rect.height / 2) {
+                target = rows[i];
+                break;
+            }
+        }
+        if (target) {
+            if (drag.row.nextSibling !== target) {
+                drag.body.insertBefore(drag.row, target);
+            }
+        } else if (drag.body.lastChild !== drag.row) {
+            drag.body.appendChild(drag.row);
+        }
+    });
+
+    function endDrag(e) {
+        if (!drag || (e && e.pointerId !== drag.id)) {
+            return;
+        }
+        var d = drag;
+        drag = null;
+        d.row.classList.remove('is-dragging');
+        root.classList.remove('is-sorting');
+        saveOrder(rowOrder(), d.before);
+    }
+    root.addEventListener('pointerup', endDrag);
+    root.addEventListener('pointercancel', endDrag);
+
+    root.addEventListener('keydown', function (e) {
+        var grip = e.target.closest ? e.target.closest('.evx-grip') : null;
+        if (!grip || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) {
+            return;
+        }
+        e.preventDefault();
+        var row = grip.closest('tr');
+        var body = row.parentNode;
+        if (!keyTimer) {
+            body.setAttribute('data-before', rowOrder().join(','));
+        }
+        if (e.key === 'ArrowUp' && row.previousElementSibling) {
+            body.insertBefore(row, row.previousElementSibling);
+        } else if (e.key === 'ArrowDown' && row.nextElementSibling) {
+            body.insertBefore(row.nextElementSibling, row);
+        }
+        grip.focus();
+        clearTimeout(keyTimer);
+        keyTimer = setTimeout(function () {
+            keyTimer = null;
+            saveOrder(rowOrder(), (body.getAttribute('data-before') || '').split(','));
+        }, 700);
+    });
 
     var fwPolicy = hook('fw-policy');
     if (fwPolicy) {
@@ -912,7 +1185,7 @@
                 var btn = fwPolicy.querySelector('[type="submit"]');
                 setBusy(btn, true);
                 api('firewall_policy', { 'in': inbound, out: outbound, enabled: enabled ? 1 : 0 }).then(function (d) {
-                    renderFirewall(d);
+                    applyFirewall(d);
                     toast(d.message || t('js_saved'), 'ok');
                 }, fail).then(function () { setBusy(btn, false); });
             });
@@ -932,7 +1205,7 @@
                 port: fwAdd.elements.port.value.trim(),
                 source: fwAdd.elements.source.value.trim()
             }).then(function (d) {
-                renderFirewall(d);
+                applyFirewall(d);
                 fwAdd.elements.port.value = '';
                 fwAdd.elements.source.value = '';
                 toast(d.message || t('js_saved'), 'ok');
@@ -966,7 +1239,7 @@
             }
             setBusy(del, true);
             api('firewall_delete', { rule_id: del.getAttribute('data-rule') }).then(function (d) {
-                renderFirewall(d);
+                applyFirewall(d);
                 toast(d.message || t('js_saved'), 'ok');
             }, function (err) {
                 fail(err);
@@ -1012,8 +1285,8 @@
         }
     }
 
-    loaders.reinstall = function loadReinstall() {
-        api('reinstall_options').then(function (d) {
+    loaders.reinstall = function loadReinstall(force) {
+        load('reinstall_options', {}, 3600000, function (d) {
             var list = hook('os-list');
             clear(list);
             (d.groups || []).forEach(function (g) {
@@ -1032,7 +1305,7 @@
                 appList.appendChild(optionCard('evx-app', a.slug, a.name, a.tagline, a.logo, a.name.charAt(0).toUpperCase(), 'linux'));
             });
             hook('reinstall-mode').hidden = !apps.length;
-        }, fail);
+        }).catch(function (err) { panelError('reinstall', err); });
     };
 
     segment('reinstall-mode', function (mode) {
@@ -1081,6 +1354,70 @@
 
     // ------------------------------------------------------------------ start
 
+    // ------------------------------------------------------------------ reverse DNS
+
+    function rdnsForm(address) {
+        return all('[data-rdns-form]').filter(function (f) { return f.getAttribute('data-rdns-form') === address; })[0];
+    }
+
+    function rdnsRow(address) {
+        return all('[data-rdns-row]').filter(function (r) { return r.getAttribute('data-rdns-row') === address; })[0];
+    }
+
+    root.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-action="rdns-edit"], [data-action="rdns-cancel"]');
+        if (!btn) {
+            return;
+        }
+        var address = btn.getAttribute('data-action') === 'rdns-edit'
+            ? btn.closest('[data-rdns-row]').getAttribute('data-rdns-row')
+            : btn.closest('[data-rdns-form]').getAttribute('data-rdns-form');
+        var form = rdnsForm(address);
+        var row = rdnsRow(address);
+        var editing = btn.getAttribute('data-action') === 'rdns-edit';
+        form.hidden = !editing;
+        row.hidden = editing;
+        if (editing) {
+            form.elements.rdns.focus();
+            form.elements.rdns.select();
+        }
+    });
+
+    root.addEventListener('submit', function (e) {
+        var form = e.target.closest('[data-rdns-form]');
+        if (!form) {
+            return;
+        }
+        e.preventDefault();
+        var address = form.getAttribute('data-rdns-form');
+        var btn = form.querySelector('[type="submit"]');
+        setBusy(btn, true);
+        api('rdns_save', { address: address, rdns: form.elements.rdns.value.trim() }).then(function (d) {
+            var row = rdnsRow(address);
+            row.querySelector('[data-rdns-value]').textContent = d.rdns;
+            form.elements.rdns.value = d.rdns;
+            form.hidden = true;
+            row.hidden = false;
+            toast(d.message || t('js_saved'), 'ok');
+        }, fail).then(function () { setBusy(btn, false); });
+    });
+
+    /** Start loading a tab's data before it is opened (hover, touch or keyboard focus on the tab). */
+    function prefetch(name) {
+        if (name && !loaded[name] && loaders[name]) {
+            loaded[name] = true;
+            loaders[name]();
+        }
+    }
+    ['mouseover', 'focusin', 'touchstart'].forEach(function (type) {
+        root.addEventListener(type, function (e) {
+            var tab = e.target.closest ? e.target.closest('.evx-tab') : null;
+            if (tab) {
+                prefetch(tab.getAttribute('data-tab'));
+            }
+        }, { passive: true });
+    });
+
     renderStatus(status);
     if (state === 'active') {
         schedule(400);
@@ -1088,6 +1425,9 @@
         if (first) {
             activate(first.getAttribute('data-tab'));
         }
+        // The OS/app catalogue is cached server-side per plan, so fetching it early is nearly free.
+        var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 2500); };
+        idle(function () { prefetch('reinstall'); });
     } else if (state === 'provisioning') {
         schedule(4000);
     }

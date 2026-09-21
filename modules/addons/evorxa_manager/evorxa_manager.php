@@ -74,5 +74,11 @@ function evorxa_manager_output($vars)
         echo '<div class="alert alert-danger">The Evorxa Cloud server module is missing. Upload <code>modules/servers/evorxa</code>.</div>';
         return;
     }
-    echo AddonController::handle($vars);
+    try {
+        echo AddonController::handle($vars);
+    } catch (\Throwable $e) {
+        logActivity('Evorxa Manager page error: ' . $e->getMessage());
+        echo '<div class="alert alert-danger"><strong>Evorxa Manager could not load this page.</strong> '
+            . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</div>';
+    }
 }

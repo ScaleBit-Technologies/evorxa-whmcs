@@ -64,11 +64,13 @@ function evorxa_ConfigOptions()
 /** Module Settings "Plan" dropdown. Falls back to the public catalog before a server is assigned. */
 function evorxa_LoaderPlans(array $params)
 {
-    $api = !empty($params['serverpassword']) ? Client::fromParams($params) : null;
     try {
+        $api = !empty($params['serverpassword']) ? Client::fromParams($params) : null;
         $plans = (new Catalog($api))->plans(true);
     } catch (ApiException $e) {
         throw new \Exception('Could not load Evorxa plans: ' . $e->friendly());
+    } catch (\Throwable $e) {
+        throw new \Exception('Could not load Evorxa plans: ' . $e->getMessage());
     }
     $options = [];
     foreach ($plans as $id => $plan) {
@@ -87,6 +89,8 @@ function evorxa_LoaderOs(array $params)
         return (new Catalog(Client::fromParams($params)))->osUnion();
     } catch (ApiException $e) {
         throw new \Exception('Could not load operating systems: ' . $e->friendly());
+    } catch (\Throwable $e) {
+        throw new \Exception('Could not load operating systems: ' . $e->getMessage());
     }
 }
 
@@ -277,10 +281,15 @@ function evorxa_ClientArea(array $params)
             'templateVariables' => ['evx' => ViewModel::build($params)],
         ];
     } catch (\Throwable $e) {
-        logModuleCall('evorxa', 'ClientArea', '', $e->getMessage());
+        logModuleCall('evorxa', 'ClientArea', '', $e->getMessage() . "\n" . $e->getTraceAsString());
+        try {
+            $vars = ViewModel::minimal($params);
+        } catch (\Throwable $inner) {
+            $vars = ['t' => []]; // error.tpl has English fallbacks
+        }
         return [
             'tabOverviewReplacementTemplate' => 'templates/error.tpl',
-            'templateVariables' => ['evx' => ViewModel::minimal($params)],
+            'templateVariables' => ['evx' => $vars],
         ];
     }
 }

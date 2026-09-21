@@ -25,6 +25,7 @@ class AddonController
 
     private $link;
     private $flash = [];
+    private $consoleUrl = 'https://console.evorxa.com';
 
     public static function handle(array $vars)
     {
@@ -52,7 +53,13 @@ class AddonController
         } catch (\Throwable $e) {
             $this->flash('danger', $e->getMessage());
         }
+        $assets = \WHMCS\Module\Server\Evorxa\ViewModel::assetsUrl();
         return View::render('admin/addon/layout.tpl', array_merge($data, [
+            'brandLogo' => $assets . '/brand/evorxa-logo.png',
+            'brandIcon' => $assets . '/brand/evorxa-icon.png',
+            'version' => Client::VERSION,
+            'consoleUrl' => $this->consoleUrl,
+            'icons' => ['dashboard' => 'fa-tachometer-alt', 'plans' => 'fa-layer-group', 'servers' => 'fa-server', 'log' => 'fa-history', 'settings' => 'fa-cog'],
             'page' => $page,
             'pages' => self::PAGES,
             'link' => $this->link,
@@ -87,11 +94,13 @@ class AddonController
                 $this->flash('success', 'Stock synced from Evorxa (' . $changed . ' product(s) updated).');
                 return [];
             case 'check_balance':
+                Cache::delete('dash:account');
                 $cents = Watcher::checkBalance();
                 $this->flash('success', 'Wallet checked: ' . Util::formatCents($cents) . '. An alert is emailed when it is below your threshold.');
                 return [];
             case 'run_sync':
                 Cache::delete('gate:sync');
+                Cache::delete('dash:account');
                 Watcher::tick();
                 $this->flash('success', 'Background sync ran.');
                 return [];
@@ -154,18 +163,22 @@ class AddonController
 
         if ($server) {
             try {
-                $api = $this->api();
-                $me = (new Catalog($api))->me(true);
-                $balance = $api->get('wallet/balance');
-                $renewal = isset($me['user']['next_renewal']) && is_array($me['user']['next_renewal']) ? $me['user']['next_renewal'] : null;
-                $data['account'] = [
-                    'email' => isset($me['user']['email']) ? $me['user']['email'] : '',
-                    'balance' => Util::formatCents(isset($balance['balance_cents']) ? $balance['balance_cents'] : 0),
-                    'low' => (float) (isset($balance['balance_cents']) ? $balance['balance_cents'] : 0) < (float) Settings::get('low_balance') * 100,
-                    'renewal' => $renewal ? Util::formatCents($renewal['amount_cents']) . ' on ' . Util::date($renewal['at']) . ' (' . (int) $renewal['instances'] . ' server(s), whole account)' : 'nothing due',
-                    'autoRenew' => !isset($me['user']['auto_renew']) || !empty($me['user']['auto_renew']),
-                    'rateLeft' => $api->lastHeader('x-ratelimit-remaining'),
-                ];
+                // Cached for a minute so the dashboard opens instantly; "Check wallet" / "Sync now" refresh it.
+                $data['account'] = Cache::remember('dash:account', 60, function () {
+                    $api = $this->api();
+                    $me = (new Catalog($api))->me(true);
+                    $balance = $api->get('wallet/balance');
+                    $cents = isset($balance['balance_cents']) ? (int) $balance['balance_cents'] : 0;
+                    $renewal = isset($me['user']['next_renewal']) && is_array($me['user']['next_renewal']) ? $me['user']['next_renewal'] : null;
+                    return [
+                        'email' => isset($me['user']['email']) ? $me['user']['email'] : '',
+                        'balance' => Util::formatCents($cents),
+                        'low' => $cents < (float) Settings::get('low_balance') * 100,
+                        'renewalAmount' => $renewal ? Util::formatCents($renewal['amount_cents']) : 'Nothing due',
+                        'renewalWhen' => $renewal ? 'Due ' . Util::date($renewal['at']) . ' · ' . (int) $renewal['instances'] . ' server(s) on the account' : '',
+                        'autoRenew' => !isset($me['user']['auto_renew']) || !empty($me['user']['auto_renew']),
+                    ];
+                });
             } catch (ApiException $e) {
                 $this->flash('danger', $e->friendly());
             }
@@ -189,6 +202,11 @@ class AddonController
         $cronOk = $lastCron && time() - $lastCron < 15 * 60;
         $checks[] = ['ok' => $cronOk, 'label' => 'WHMCS cron ran ' . ($lastCron ? self::ago($lastCron) : 'never'), 'hint' => 'Run the WHMCS cron every 5 minutes (*/5 * * * *) so new servers are finalised and emailed promptly and renewals are checked.', 'url' => 'systemcronstatus.php'];
         $data['checks'] = $checks;
+        $done = count(array_filter($checks, function ($c) {
+            return $c['ok'];
+        }));
+        $data['progress'] = ['done' => $done, 'total' => count($checks), 'pct' => (int) round(100 * $done / max(1, count($checks)))];
+        $data['finance'] = $this->finance();
 
         $counts = [];
         foreach (Capsule::table(Schema::SERVICES)->select('state', Capsule::raw('COUNT(*) AS c'))->groupBy('state')->get() as $row) {
@@ -199,6 +217,63 @@ class AddonController
         $data['attentionCount'] = count($data['attention']);
         $data['recent'] = $this->logRows(Capsule::table(Schema::LOG)->orderBy('id', 'desc')->limit(10)->get());
         return $data;
+    }
+
+    /**
+     * Monthly economics of active Evorxa services, in the default WHMCS currency:
+     * what clients pay (normalised per month) versus what Evorxa charges for their plans.
+     */
+    private function finance()
+    {
+        $default = Capsule::table('tblcurrencies')->where('default', 1)->first();
+        if (!$default) {
+            return null;
+        }
+        $rates = Capsule::table('tblcurrencies')->pluck('rate', 'id')->all();
+        $usdRate = (float) Capsule::table('tblcurrencies')->where('code', 'USD')->value('rate');
+        $months = ['monthly' => 1, 'quarterly' => 3, 'semi-annually' => 6, 'annually' => 12, 'biennially' => 24, 'triennially' => 36];
+        $rows = Capsule::table(Schema::SERVICES . ' as e')
+            ->join('tblhosting as h', 'h.id', '=', 'e.service_id')
+            ->join('tblclients as c', 'c.id', '=', 'h.userid')
+            ->where('e.state', 'active')->where('h.domainstatus', 'Active')
+            ->get(['h.amount', 'h.billingcycle', 'c.currency', 'e.package_id', 'e.upstream_cycle']);
+        if (!count($rows)) {
+            return ['count' => 0];
+        }
+        try {
+            $plans = (new Catalog())->plans();
+        } catch (\Throwable $e) {
+            $plans = [];
+        }
+        $revenue = 0.0;
+        $cost = 0.0;
+        $costKnown = true;
+        foreach ($rows as $r) {
+            $m = isset($months[strtolower($r->billingcycle)]) ? $months[strtolower($r->billingcycle)] : 0;
+            $rate = isset($rates[$r->currency]) && (float) $rates[$r->currency] > 0 ? (float) $rates[$r->currency] : 1;
+            if ($m) {
+                $revenue += ((float) $r->amount / $m) / $rate;
+            }
+            $cycle = $r->upstream_cycle ?: 'monthly';
+            if (isset($plans[$r->package_id]['pricing'][$cycle]['per_month'])) {
+                $usd = (float) $plans[$r->package_id]['pricing'][$cycle]['per_month'];
+                $cost += $usdRate > 0 ? $usd / $usdRate : $usd;
+            } else {
+                $costKnown = false;
+            }
+        }
+        $fmt = function ($v) use ($default) {
+            return $default->prefix . number_format($v, 2) . $default->suffix;
+        };
+        return [
+            'count' => count($rows),
+            'revenue' => $fmt($revenue),
+            'cost' => $fmt($cost),
+            'margin' => $fmt($revenue - $cost),
+            'marginPct' => $revenue > 0 ? (int) round(100 * ($revenue - $cost) / $revenue) : 0,
+            'negative' => $revenue < $cost,
+            'costKnown' => $costKnown,
+        ];
     }
 
     private function attention()
@@ -230,6 +305,7 @@ class AddonController
             'graphs' => 'Usage graphs (CPU, memory, disk, network)',
             'ddos' => 'DDoS protection view and attack email alerts',
             'firewall' => 'Network firewall rules',
+            'rdns' => 'Edit reverse DNS (rDNS) of the server\'s IP addresses',
         ];
         foreach (Settings::FEATURES as $f) {
             $features[] = ['key' => $f, 'label' => $labels[$f], 'on' => $values['feature_' . $f] === '1'];

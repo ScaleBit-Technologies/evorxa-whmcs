@@ -82,6 +82,8 @@ class ViewModel
         ];
 
         $vm['bootJson'] = json_encode([
+            'sid' => $sid,
+            'v' => $vm['v'],
             'api' => $apiUrl,
             'token' => function_exists('generate_token') ? generate_token('plain') : '',
             'state' => $state,
@@ -148,6 +150,7 @@ class ViewModel
             'graphs' => Settings::feature('graphs') && !$locked('lock_monitoring'),
             'ddos' => Settings::feature('ddos') && !$locked('lock_ddos'),
             'firewall' => Settings::feature('firewall') && !$locked('lock_firewall'),
+            'rdns' => Settings::feature('rdns'),
         ];
     }
 

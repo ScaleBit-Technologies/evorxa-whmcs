@@ -319,6 +319,61 @@
 .evx-modal p { margin: 0; opacity: .75; font-size: 14px; }
 .evx-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
+/* Skeleton loaders (shown until the first data arrives) */
+.evx .evx-skel {
+    display: block; border-radius: 6px; background: rgba(127, 127, 127, .14);
+    background: linear-gradient(90deg, rgba(127, 127, 127, .10) 25%, rgba(127, 127, 127, .22) 50%, rgba(127, 127, 127, .10) 75%);
+    background-size: 300% 100%; animation: evx-shimmer 1.3s ease-in-out infinite;
+}
+@keyframes evx-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+.evx .evx-skel-num { width: 64px; height: 26px; margin: 2px 0 6px; }
+.evx .evx-skel-inline { display: inline-block; width: 56px; height: 12px; vertical-align: middle; }
+.evx .evx-skel-line { height: 12px; width: 100%; margin: 3px 0; }
+.evx .evx-skel-row:nth-child(2) .evx-skel-line { width: 82%; }
+.evx .evx-skel-row:nth-child(3) .evx-skel-line { width: 64%; }
+.evx .evx-skel-chart { height: 100%; }
+.evx .evx-skel-card { height: 56px; border-radius: var(--evx-radius-sm); }
+@media (prefers-reduced-motion: reduce) { .evx .evx-skel { animation: none; } }
+
+/* Firewall rule ordering (drag the grip, or focus it and use the arrow keys) */
+.evx .evx-grip-col { width: 34px; }
+.evx .evx-grip {
+    border: 0; background: transparent; color: inherit; opacity: .45; cursor: grab; touch-action: none;
+    width: 26px; height: 30px; border-radius: 6px; padding: 0; display: inline-flex; align-items: center; justify-content: center;
+}
+.evx .evx-grip:hover, .evx .evx-grip:focus-visible { opacity: 1; background: rgba(127, 127, 127, .14); outline: none; }
+.evx tr.is-dragging { background: rgba(37, 99, 235, .06); box-shadow: inset 3px 0 0 var(--evx-accent); }
+.evx tr.is-dragging .evx-grip { cursor: grabbing; opacity: 1; }
+.evx.is-sorting, .evx.is-sorting * { cursor: grabbing !important; user-select: none; }
+.evx .evx-order-hint { margin: -4px 0 10px; }
+.evx .evx-order-hint i { margin-inline-end: 4px; }
+.evx .evx-prio { font-size: 11px; opacity: .5; font-variant-numeric: tabular-nums; }
+
+/* Reverse DNS editor */
+.evx .evx-rdns { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
+.evx .evx-rdns .evx-link { margin-top: 0; font-size: 12px; }
+.evx .evx-rdns-edit i { font-size: 10px; }
+.evx .evx-rdns-form { margin: 8px 0 0; padding-inline-start: 12px; }
+.evx .evx-rdns-form .form-control { height: 34px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+.evx .evx-rdns-form .btn { white-space: nowrap; }
+
+/* Busy buttons show a spinner instead of just greying out */
+.evx .btn.is-busy, .evx .evx-icon-btn.is-busy { position: relative; color: transparent !important; pointer-events: none; }
+.evx .btn.is-busy > *, .evx .evx-icon-btn.is-busy > * { visibility: hidden; }
+.evx .btn.is-busy::after, .evx .evx-icon-btn.is-busy::after {
+    content: ""; position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%;
+    border: 2px solid rgba(127, 127, 127, .35); border-top-color: var(--evx-accent); animation: evx-spin .7s linear infinite;
+}
+.evx .btn-primary.is-busy::after, .evx .btn-danger.is-busy::after { border-color: rgba(255, 255, 255, .45); border-top-color: #fff; }
+
+/* A tab that failed to load */
+.evx .evx-panel-error {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 14px; margin-bottom: 14px;
+    border-radius: var(--evx-radius-sm); background: rgba(220, 38, 38, .07); color: var(--evx-bad); font-size: 13px;
+}
+.evx .evx-panel-error span { flex: 1 1 200px; }
+.evx .evx-panel.has-error .evx-skel { animation: none; opacity: .45; }
+
 /* Phones. Kept last so it overrides the component rules above. */
 @media (max-width: 575px) {
     .evx .evx-card { padding: 16px; }

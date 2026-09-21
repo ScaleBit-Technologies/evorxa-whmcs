@@ -46,7 +46,20 @@
                             {if $ip.primary}<span class="evx-tag evx-tag-accent">{$evx.t.primary|escape}</span>{/if}
                             <button type="button" class="evx-icon-btn" data-copy="{$ip.address|escape}" title="{$evx.t.copy|escape}"><i class="far fa-copy" aria-hidden="true"></i></button>
                         </div>
-                        {if $ip.rdns}<div class="evx-sub">{$evx.t.rdns|escape}: <span class="evx-mono">{$ip.rdns|escape}</span></div>{/if}
+                        <div class="evx-sub evx-rdns" data-rdns-row="{$ip.address|escape}">
+                            {$evx.t.rdns|escape}: <span class="evx-mono" data-rdns-value>{if $ip.rdns}{$ip.rdns|escape}{else}&ndash;{/if}</span>
+                            {if $evx.features.rdns}<button type="button" class="evx-link evx-rdns-edit" data-action="rdns-edit"><i class="fas fa-pen" aria-hidden="true"></i>{$evx.t.edit|escape}</button>{/if}
+                        </div>
+                        {if $evx.features.rdns}
+                            <form class="evx-rdns-form" data-rdns-form="{$ip.address|escape}" hidden autocomplete="off">
+                                <div class="evx-inline">
+                                    <input type="text" name="rdns" class="form-control" value="{$ip.rdns|escape}" placeholder="host.example.com" aria-label="{$evx.t.rdns|escape}" spellcheck="false">
+                                    <button type="submit" class="btn btn-primary">{$evx.t.save|escape}</button>
+                                    <button type="button" class="btn btn-default" data-action="rdns-cancel">{$evx.t.cancel|escape}</button>
+                                </div>
+                                <div class="evx-sub">{$evx.t.rdns_hint|escape}</div>
+                            </form>
+                        {/if}
                     </li>
                 {/foreach}
             </ul>
