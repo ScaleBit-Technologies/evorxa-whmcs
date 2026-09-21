@@ -59,7 +59,7 @@ Upload the zip, or run one command over SSH:
 
 Then activate the addon, add your Evorxa API token and import plans. The step-by-step guide with screenshots is at https://github.com/ScaleBit-Technologies/evorxa-whmcs
 
-Made by ScaleBit Technologies, the company behind Evorxa.
+Open source under the MIT license. Made by ScaleBit Technologies, the company behind Evorxa.
 ```
 
 **Payment Type:** Free

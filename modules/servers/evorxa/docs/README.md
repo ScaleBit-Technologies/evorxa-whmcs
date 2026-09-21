@@ -67,3 +67,7 @@ All screenshots are in the [`screenshots`](screenshots) folder: `0x`/`1x` client
 ## Support
 
 Evorxa is operated by ScaleBit Technologies. For the API and your Evorxa account: <https://evorxa.com> - support@evorxa.com.
+
+## License
+
+MIT - see [LICENSE](../LICENSE).

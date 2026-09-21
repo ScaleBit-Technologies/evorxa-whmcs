@@ -2,7 +2,7 @@
     "schema": "1.0",
     "type": "whmcs-servers",
     "name": "evorxa",
-    "license": "proprietary",
+    "license": "MIT",
     "category": "provisioning",
     "description": {
         "name": "Evorxa Cloud",

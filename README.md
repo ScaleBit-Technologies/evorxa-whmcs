@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/WHMCS-8.0%2B-1d4ed8" alt="WHMCS 8.0+">
   <img src="https://img.shields.io/badge/PHP-7.4%20--%208.3-777bb4" alt="PHP 7.4 - 8.3">
   <img src="https://img.shields.io/badge/languages-English%20%7C%20Arabic-0f766e" alt="English and Arabic">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/ScaleBit-Technologies/evorxa-whmcs?color=16a34a" alt="MIT license"></a>
   <a href="https://github.com/ScaleBit-Technologies/evorxa-whmcs/releases/latest/download/evorxa-whmcs.zip"><img src="https://img.shields.io/badge/download-evorxa--whmcs.zip-111827" alt="Download"></a>
 </p>
 
@@ -174,4 +175,6 @@ marketplace/                     WHMCS Marketplace listing text and images
 - Bugs and feature requests: [GitHub issues](https://github.com/ScaleBit-Technologies/evorxa-whmcs/issues)
 - Evorxa account, API and billing: [evorxa.com](https://evorxa.com), support@evorxa.com
 
-Made by **ScaleBit Technologies**, the company behind Evorxa. License: proprietary.
+## License
+
+[MIT](LICENSE) © 2026 ScaleBit Technologies, the company behind Evorxa. Free to use, modify and redistribute.

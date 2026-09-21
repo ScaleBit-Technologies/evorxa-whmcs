@@ -2,7 +2,7 @@
 
 ## 1.0.0 - 2026-09-21
 
-First release.
+First release, under the MIT license.
 
 - One-command install and update over SSH (`install.sh`), downloads from GitHub releases.
 - Documentation: installation guide, usage guide and 27 screenshots (client area, order form, admin, email) in `modules/servers/evorxa/docs/`; included in every package.
