@@ -21,7 +21,7 @@ use WHMCS\Module\Server\Evorxa\Watcher;
  */
 class AddonController
 {
-    const PAGES = ['dashboard' => 'Dashboard', 'plans' => 'Plans & Import', 'servers' => 'Servers', 'log' => 'Activity Log', 'settings' => 'Settings'];
+    const PAGES = ['dashboard' => 'Dashboard', 'plans' => 'Plans & Import', 'servers' => 'Servers', 'log' => 'Activity Log', 'settings' => 'Settings', 'install' => 'Install / Export'];
 
     private $link;
     private $flash = [];
@@ -59,7 +59,7 @@ class AddonController
             'brandIcon' => $assets . '/brand/evorxa-icon.png',
             'version' => Client::VERSION,
             'consoleUrl' => $this->consoleUrl,
-            'icons' => ['dashboard' => 'fa-tachometer-alt', 'plans' => 'fa-layer-group', 'servers' => 'fa-server', 'log' => 'fa-history', 'settings' => 'fa-cog'],
+            'icons' => ['dashboard' => 'fa-tachometer-alt', 'plans' => 'fa-layer-group', 'servers' => 'fa-server', 'log' => 'fa-history', 'settings' => 'fa-cog', 'install' => 'fa-download'],
             'page' => $page,
             'pages' => self::PAGES,
             'link' => $this->link,
@@ -97,6 +97,10 @@ class AddonController
                 Cache::delete('dash:account');
                 $cents = Watcher::checkBalance();
                 $this->flash('success', 'Wallet checked: ' . Util::formatCents($cents) . '. An alert is emailed when it is below your threshold.');
+                return [];
+            case 'download_package':
+                Repo::log(null, 'export', true, 'Module package downloaded (' . \WHMCS\Module\Server\Evorxa\Packager::filename() . ')');
+                \WHMCS\Module\Server\Evorxa\Packager::stream(); // exits on success
                 return [];
             case 'run_sync':
                 Cache::delete('gate:sync');
@@ -435,6 +439,25 @@ class AddonController
             'filterService' => $service ?: '',
             'pageNo' => $pageNo,
             'hasNext' => $total > $pageNo * 50,
+        ];
+    }
+
+    private function install()
+    {
+        $whmcs = (string) Capsule::table('tblconfiguration')->where('setting', 'Version')->value('value');
+        $lastCron = strtotime((string) Capsule::table('tblconfiguration')->where('setting', 'lastCronInvocationTime')->value('value'));
+        $checks = [
+            ['label' => 'PHP 7.4 or newer', 'ok' => version_compare(PHP_VERSION, '7.4.0', '>='), 'value' => PHP_VERSION],
+            ['label' => 'WHMCS 8.0 or newer', 'ok' => version_compare(preg_replace('/-.*/', '', $whmcs), '8.0.0', '>='), 'value' => $whmcs],
+            ['label' => 'cURL extension', 'ok' => function_exists('curl_init'), 'value' => function_exists('curl_version') ? curl_version()['version'] : 'missing'],
+            ['label' => 'zip extension (for this export)', 'ok' => class_exists('ZipArchive'), 'value' => class_exists('ZipArchive') ? 'available' : 'missing'],
+            ['label' => 'Cron ran in the last 15 minutes', 'ok' => $lastCron && time() - $lastCron < 900, 'value' => $lastCron ? self::ago($lastCron) : 'never'],
+            ['label' => 'Evorxa API reachable', 'ok' => (bool) Client::defaultServer(), 'value' => Client::defaultServer() ? 'server configured' : 'no server yet'],
+        ];
+        return [
+            'package' => \WHMCS\Module\Server\Evorxa\Packager::summary(),
+            'packageName' => \WHMCS\Module\Server\Evorxa\Packager::filename(),
+            'requirements' => ['zip' => class_exists('ZipArchive'), 'checks' => $checks],
         ];
     }
 

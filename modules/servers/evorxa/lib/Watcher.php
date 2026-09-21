@@ -192,9 +192,24 @@ class Watcher
                 return false; // Application still installing.
             }
             if (!$app) {
-                // Evorxa answers null when the server has no application (e.g. rebuilt with a plain OS elsewhere).
-                Repo::update($row->service_id, ['app_slug' => null, 'os_label' => Util::clean(isset($inst['os']) ? $inst['os'] : '', 190)]);
-                $row->os_label = isset($inst['os']) ? $inst['os'] : $row->os_label;
+                $catalogApps = (new Catalog())->apps();
+                $appName = isset($catalogApps[$row->app_slug]['name']) ? $catalogApps[$row->app_slug]['name'] : $row->app_slug;
+                $osNow = isset($inst['os']) ? (string) $inst['os'] : '';
+                // Right after boot the install may not be registered yet: Evorxa still reports the app as the OS.
+                if (!$timedOut && ($osNow === '' || stripos($osNow, $appName) !== false || stripos($osNow, $row->app_slug) !== false)) {
+                    return false;
+                }
+                // The server came up without the application (install failed, or rebuilt elsewhere).
+                Repo::update($row->service_id, ['app_slug' => null, 'os_label' => Util::clean($osNow, 190)]);
+                Repo::log($row->service_id, 'app_missing', false, $appName . ' is not installed; the server runs ' . ($osNow ?: 'a plain OS'), null, $row->instance_id);
+                Mailer::alertAdmin(
+                    'app-missing-' . $row->service_id,
+                    'Ordered app ' . $appName . ' is not installed (service #' . $row->service_id . ')',
+                    'Server ' . $row->instance_id . ' is running ' . ($osNow ?: 'a plain OS') . ' without ' . $appName
+                    . '. Reinstall it with the app from the client panel or the Evorxa console, or contact the client.'
+                );
+                $row->os_label = $osNow ?: $row->os_label;
+                $row->missing_app = $appName;
             }
             if ($app) {
                 $catalogApps = (new Catalog())->apps();
@@ -214,7 +229,9 @@ class Watcher
             Repo::log($row->service_id, 'provision', true, 'Server is ready', null, $row->instance_id);
         }
         Cache::delete('inst:' . $row->instance_id);
-        Mailer::sendReady($row->service_id, Mailer::readyVars($row->service_id, $inst, $app, $row->os_label));
+        $vars = Mailer::readyVars($row->service_id, $inst, $app, $row->os_label);
+        $vars['evx_app_missing'] = isset($row->missing_app) ? Util::clean($row->missing_app, 80) : '';
+        Mailer::sendReady($row->service_id, $vars);
         return true;
     }
 

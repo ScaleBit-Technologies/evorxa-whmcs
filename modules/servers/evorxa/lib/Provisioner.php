@@ -248,8 +248,28 @@ class Provisioner
             return 'success';
         }
         try {
-            $this->instance($row);
-            $res = $this->api->delete('instances/' . rawurlencode($row->instance_id), ['mode' => 'immediate']);
+            $inst = $this->instance($row);
+            $path = 'instances/' . rawurlencode($row->instance_id);
+            if (!empty($inst['scheduled_deletion_at'])) {
+                // Evorxa refuses an immediate delete (409) while an end-of-cycle deletion is pending.
+                try {
+                    $this->api->post($path . '/cancel-deletion');
+                } catch (ApiException $e) {
+                    // Handled below if the delete is still refused.
+                }
+            }
+            try {
+                $res = $this->api->delete($path, ['mode' => 'immediate']);
+            } catch (ApiException $e) {
+                if ($e->status() === 409 && stripos($e->upstreamMessage(), 'scheduled') !== false) {
+                    $when = Util::date(isset($inst['scheduled_deletion_at']) ? $inst['scheduled_deletion_at'] : null, true);
+                    Repo::log($this->sid, 'terminate', true, 'Already scheduled for deletion' . ($when ? ' on ' . $when : '') . '; Evorxa removes it then', null, $row->instance_id);
+                    $this->deleteSshKey($row->ssh_key_id);
+                    Repo::update($this->sid, ['state' => 'terminated', 'ssh_key_id' => null]);
+                    return 'success';
+                }
+                throw $e;
+            }
             $refund = null;
             foreach (['refund_cents', 'refunded_cents', 'refund'] as $key) {
                 if (isset($res[$key]) && is_numeric($res[$key])) {

@@ -296,7 +296,7 @@ class Importer
             ]);
             $this->addOption($gid, 'os|Operating System', 1, $os, $currencies);
             if ($apps) {
-                $this->addOption($gid, 'app|One-Click App', 2, ['none' => 'None - plain operating system'] + $apps, $currencies);
+                $this->addOption($gid, 'app|One-Click App (optional, replaces the OS)', 2, ['none' => 'None - use the operating system above'] + $apps, $currencies);
             }
         } else {
             $gid = $group->id;
