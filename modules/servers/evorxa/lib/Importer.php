@@ -115,6 +115,7 @@ class Importer
                     $this->attachOptions($pid, $plan, $currencies);
                     $this->addCustomFields($pid);
                 }
+                self::syncTranslations($pid);
                 $report[] = ['plan' => $name, 'status' => 'created', 'pid' => $pid, 'name' => $name, 'prices' => $shown, 'message' => 'Stock ' . (int) $plan['stock']];
             } catch (\Throwable $e) {
                 $report[] = ['plan' => $name, 'status' => 'error', 'message' => $e->getMessage()];
@@ -159,6 +160,32 @@ class Importer
         $items[] = 'Full root access, ready in minutes';
         $items[] = $windows ? 'Linux, Windows or one-click apps' : 'Linux or one-click apps';
         return '<ul><li>' . implode('</li><li>', $items) . '</li></ul>';
+    }
+
+    /**
+     * WHMCS keeps storefront text in tbldynamic_translations too, and those rows win over
+     * tblproducts. Copy the product's own text into existing rows for the system language
+     * so the store never shows stale copies (other languages are left alone).
+     */
+    public static function syncTranslations($pid)
+    {
+        if (!Capsule::schema()->hasTable('tbldynamic_translations')) {
+            return 0;
+        }
+        $language = (string) Capsule::table('tblconfiguration')->where('setting', 'Language')->value('value') ?: 'english';
+        $product = Capsule::table('tblproducts')->where('id', (int) $pid)->first(['name', 'description', 'short_description', 'tagline']);
+        if (!$product) {
+            return 0;
+        }
+        $updated = 0;
+        foreach (['name', 'description', 'short_description', 'tagline'] as $field) {
+            $updated += Capsule::table('tbldynamic_translations')
+                ->where('related_type', 'product.{id}.' . $field)
+                ->where('related_id', (int) $pid)
+                ->where('language', $language)
+                ->update(['translation' => (string) $product->$field, 'updated_at' => date('Y-m-d H:i:s')]);
+        }
+        return $updated;
     }
 
     public function offersWindows($packageId)
