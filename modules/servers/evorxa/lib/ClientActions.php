@@ -145,6 +145,7 @@ class ClientActions
         $ip = isset($this->snap['main_ip']) ? $this->snap['main_ip'] : '';
         return $this->ok([
             'state' => $state,
+            'phase' => ViewModel::phase($this->snap),
             'status' => ViewModel::status($this->snap, $state, $t),
             'ip' => Util::clean($ip, 64),
             'hostname' => Util::clean(isset($this->snap['hostname']) ? $this->snap['hostname'] : '', 190),

@@ -36,7 +36,8 @@ class ViewModel
             }
         }
 
-        $osLabel = $row && $row->os_label ? $row->os_label : (isset($snap['os']) ? $snap['os'] : '');
+        // Upstream is the truth (the server may have been rebuilt elsewhere); fall back to what we ordered.
+        $osLabel = !empty($snap['os']) ? $snap['os'] : ($row && $row->os_label ? $row->os_label : '');
         $windows = stripos($osLabel, 'windows') !== false;
         $ip = !empty($snap['main_ip']) ? $snap['main_ip'] : ($hosting ? $hosting->dedicatedip : '');
         $hostname = !empty($snap['hostname']) ? $snap['hostname'] : ($hosting ? $hosting->domain : '');
@@ -45,6 +46,8 @@ class ViewModel
         $webRoot = self::webRoot();
         $apiUrl = $webRoot . '/clientarea.php?action=productdetails&id=' . $sid . '&modop=custom&a=api';
         $status = self::status($snap, $state, $t);
+        $app = self::app($row, $snap);
+        $osLogo = $app && $app['logo'] ? $app['logo'] : self::logo('os', self::osFamily($osLabel));
 
         $vm = [
             'v' => self::assetVersion(),
@@ -60,18 +63,18 @@ class ViewModel
                 'os' => Util::clean($osLabel, 120),
                 'osFamily' => self::osFamily($osLabel),
                 'osLetter' => strtoupper(substr(self::osFamily($osLabel), 0, 1)),
-                'osLogo' => self::logo('os', self::osFamily($osLabel)),
+                'osLogo' => $osLogo,
                 'windows' => $windows,
                 'username' => Util::clean($username, 60),
                 'hasPassword' => $hosting && $hosting->password !== '',
                 'location' => Util::clean(isset($snap['location']) ? $snap['location'] : '', 80),
-                'flag' => self::flag(isset($snap['location_country_code']) ? $snap['location_country_code'] : ''),
                 'connect' => $ip ? ($windows ? $ip : 'ssh ' . Util::clean($username, 60) . '@' . $ip) : '',
             ],
             'status' => $status,
+            'phase' => self::phase($snap),
             'specs' => self::specs($snap, $plan, $t),
             'ips' => self::ips($snap, $t),
-            'app' => self::app($row, $snap),
+            'app' => $app,
             'features' => $features,
             'hasTabs' => $features['graphs'] || $features['ddos'] || $features['firewall'] || $features['reinstall'],
             'firstTab' => $features['graphs'] ? 'usage' : ($features['ddos'] ? 'ddos' : ($features['firewall'] ? 'firewall' : 'reinstall')),
@@ -288,14 +291,10 @@ class ViewModel
         return 'linux';
     }
 
-    /** Regional-indicator flag emoji for a two-letter country code. */
-    public static function flag($code)
+    /** Setup progress shown on the pending view: "build" while the VM is created, then "install" (OS boot / app setup). */
+    public static function phase(array $snap)
     {
-        $code = strtoupper(preg_replace('/[^a-z]/i', '', (string) $code));
-        if (strlen($code) !== 2 || !function_exists('mb_chr')) {
-            return '';
-        }
-        return mb_chr(0x1F1E6 + ord($code[0]) - 65, 'UTF-8') . mb_chr(0x1F1E6 + ord($code[1]) - 65, 'UTF-8');
+        return $snap && !Provisioner::isBuilding($snap) ? 'install' : 'build';
     }
 
     private static function jsStrings(array $t)

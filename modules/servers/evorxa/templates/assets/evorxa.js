@@ -469,6 +469,21 @@
         });
     }
 
+    /** Pending view stepper: order -> build -> install -> ready. */
+    function renderPhase(phase) {
+        var steps = hook('steps');
+        if (!steps || !phase) {
+            return;
+        }
+        var order = ['order', 'build', 'install', 'ready'];
+        var current = order.indexOf(phase);
+        all('li', steps).forEach(function (li) {
+            var i = order.indexOf(li.getAttribute('data-step'));
+            li.classList.toggle('is-done', i < current);
+            li.classList.toggle('is-active', i === current);
+        });
+    }
+
     var pollTimer = null;
     var sessionLost = false;
     function schedule(delay) {
@@ -490,6 +505,7 @@
             if (d.ip && hook('ip')) {
                 hook('ip').textContent = d.ip;
             }
+            renderPhase(d.phase);
             if (before !== state && (before === 'provisioning' || state === 'provisioning' || state === 'suspended')) {
                 window.location.reload();
                 return;

@@ -18,8 +18,8 @@
                         <i class="far fa-copy" aria-hidden="true"></i><span class="evx-mono" data-evx="ip">{$evx.server.ip|escape}</span>
                     </button>
                 {/if}
-                {if $evx.server.os}<span class="evx-meta"><i class="fas fa-compact-disc" aria-hidden="true"></i>{$evx.server.os|escape}</span>{/if}
-                {if $evx.server.location}<span class="evx-meta">{if $evx.server.flag}<span class="evx-flag">{$evx.server.flag}</span>{else}<i class="fas fa-map-marker-alt" aria-hidden="true"></i>{/if}{$evx.server.location|escape}</span>{/if}
+                {if $evx.server.os}<span class="evx-meta"><i class="fas {if $evx.app}fa-cube{else}fa-compact-disc{/if}" aria-hidden="true"></i>{$evx.server.os|escape}</span>{/if}
+                {if $evx.server.location}<span class="evx-meta"><i class="fas fa-map-marker-alt" aria-hidden="true"></i>{$evx.server.location|escape}</span>{/if}
             </div>
         </div>
     </div>

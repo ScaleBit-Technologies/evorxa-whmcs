@@ -98,11 +98,6 @@
 .evx .evx-btn i { font-size: 12px; opacity: .8; }
 .evx .evx-btn[disabled] { opacity: .42; cursor: not-allowed; }
 .evx .evx-btn-quiet { color: var(--evx-bad); }
-@media (max-width: 575px) {
-    .evx .evx-power { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
-    .evx .evx-btn { justify-content: center; }
-}
-
 /* Specs */
 .evx .evx-specs { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
 .evx .evx-spec {
@@ -276,12 +271,25 @@
     border: 3px solid rgba(127, 127, 127, .2); border-top-color: var(--evx-accent); animation: evx-spin .9s linear infinite;
 }
 @keyframes evx-spin { to { transform: rotate(360deg); } }
-.evx .evx-steps { list-style: none; margin: 22px 0 0; padding: 0; display: flex; justify-content: center; flex-wrap: wrap; gap: 10px 22px; font-size: 13px; }
-.evx .evx-steps li { display: inline-flex; align-items: center; gap: 7px; opacity: .45; }
-.evx .evx-steps li span { width: 10px; height: 10px; border-radius: 50%; background: rgba(127, 127, 127, .5); }
+/* Stepper: four even columns joined by a line; a vertical list on phones. */
+.evx .evx-steps { list-style: none; margin: 26px auto 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); max-width: 600px; font-size: 13px; }
+.evx .evx-steps li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; opacity: .5; padding: 0 4px; }
+.evx .evx-steps li::before {
+    content: ""; position: absolute; top: 6px; height: 2px; background: rgba(127, 127, 127, .25);
+    inset-inline-start: calc(-50% + 12px); inset-inline-end: calc(50% + 12px);
+}
+.evx .evx-steps li:first-child::before { display: none; }
 .evx .evx-steps li.is-done, .evx .evx-steps li.is-active { opacity: 1; }
-.evx .evx-steps li.is-done span { background: var(--evx-ok); }
-.evx .evx-steps li.is-active span { background: var(--evx-accent); animation: evx-pulse 1.4s ease-in-out infinite; }
+.evx .evx-steps li.is-done::before, .evx .evx-steps li.is-active::before { background: var(--evx-ok); }
+.evx .evx-step-dot { position: relative; z-index: 1; width: 14px; height: 14px; border-radius: 50%; background: var(--evx-surface); border: 2px solid rgba(127, 127, 127, .45); flex: 0 0 14px; }
+.evx .evx-steps li.is-done .evx-step-dot { background: var(--evx-ok); border-color: var(--evx-ok); }
+.evx .evx-steps li.is-active .evx-step-dot { border-color: var(--evx-accent); background: var(--evx-accent); animation: evx-pulse 1.4s ease-in-out infinite; }
+.evx .evx-steps li.is-active { font-weight: 600; }
+@media (max-width: 575px) {
+    .evx .evx-steps { grid-template-columns: 1fr; width: max-content; max-width: 100%; gap: 12px; }
+    .evx .evx-steps li { flex-direction: row; text-align: start; gap: 10px; padding: 0; }
+    .evx .evx-steps li::before { display: none; }
+}
 
 /* Billing */
 .evx .evx-billing-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -310,3 +318,40 @@
 .evx-modal h4 { margin: 0 0 8px; font-size: 17px; font-weight: 700; }
 .evx-modal p { margin: 0; opacity: .75; font-size: 14px; }
 .evx-modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
+/* Phones. Kept last so it overrides the component rules above. */
+@media (max-width: 575px) {
+    .evx .evx-card { padding: 16px; }
+    .evx .evx-hero-main { align-items: flex-start; flex-basis: 100%; gap: 12px; }
+    .evx .evx-hero .evx-os { flex: 0 0 42px; width: 42px; height: 42px; border-radius: 12px; font-size: 17px; }
+    .evx .evx-hero .evx-os-img { padding: 7px; }
+    .evx .evx-hostname { font-size: 17px; white-space: normal; overflow-wrap: anywhere; }
+    .evx .evx-hero-title { gap: 6px 8px; }
+    .evx .evx-hero-meta { gap: 6px 12px; }
+    .evx .evx-power { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+    .evx .evx-btn { justify-content: center; }
+    .evx .evx-pending, .evx .evx-notice { padding: 28px 16px; }
+
+    /* Two tiles per row instead of one long column. */
+    .evx .evx-specs, .evx .evx-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .evx .evx-spec { padding: 12px; gap: 10px; }
+    .evx .evx-spec-icon { flex: 0 0 32px; width: 32px; height: 32px; border-radius: 8px; font-size: 13px; }
+    .evx .evx-spec-value { font-size: 15px; }
+    .evx .evx-stat { padding: 10px 12px; }
+    .evx .evx-stat-value { font-size: 18px; }
+    .evx .evx-stat-small { font-size: 13px; }
+    .evx .evx-dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+
+    /* Tabs become a 2x2 button grid, so none is hidden off-screen. */
+    .evx .evx-tabs-card { padding-top: 16px; }
+    .evx .evx-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; border-bottom: 0; margin: 0; overflow: visible; }
+    .evx .evx-tab {
+        justify-content: center; margin: 0; padding: 9px 8px; font-size: 13px; border: 1px solid var(--evx-border);
+        border-radius: var(--evx-radius-sm); opacity: .75;
+    }
+    .evx .evx-tab.is-active { border-color: var(--evx-accent); background: rgba(37, 99, 235, .06); background: color-mix(in srgb, var(--evx-accent) 8%, transparent); }
+    .evx .evx-panel { padding-top: 14px; }
+    .evx .evx-panel-head .evx-seg { width: 100%; }
+    .evx .evx-panel-head .evx-seg button { flex: 1 1 0; }
+    .evx .evx-chart-box { height: 150px; }
+}

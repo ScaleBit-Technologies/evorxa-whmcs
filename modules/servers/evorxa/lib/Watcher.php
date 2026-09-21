@@ -188,8 +188,13 @@ class Watcher
             } catch (ApiException $e) {
                 $app = null;
             }
-            if ((!$app || (isset($app['status']) && $app['status'] !== 'ready')) && !$timedOut) {
+            if ($app && isset($app['status']) && $app['status'] !== 'ready' && !$timedOut) {
                 return false; // Application still installing.
+            }
+            if (!$app) {
+                // Evorxa answers null when the server has no application (e.g. rebuilt with a plain OS elsewhere).
+                Repo::update($row->service_id, ['app_slug' => null, 'os_label' => Util::clean(isset($inst['os']) ? $inst['os'] : '', 190)]);
+                $row->os_label = isset($inst['os']) ? $inst['os'] : $row->os_label;
             }
             if ($app) {
                 $catalogApps = (new Catalog())->apps();
