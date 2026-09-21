@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="marketplace/github-social-preview.png" alt="Evorxa Cloud for WHMCS - resell VPS and VDS servers with automatic provisioning" width="100%">
+  <img src="marketplace/github-social-preview.jpg" alt="Evorxa Cloud for WHMCS - resell VPS and VDS servers with automatic provisioning" width="100%">
 </p>
 
 <h1 align="center">Evorxa Cloud for WHMCS</h1>
