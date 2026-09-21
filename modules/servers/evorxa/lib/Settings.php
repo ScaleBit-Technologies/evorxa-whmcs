@@ -91,7 +91,7 @@ class Settings
         return $prefix;
     }
 
-    /** "kero-dev.tech" from the WHMCS Domain setting, else the System URL minus its first label. */
+    /** "example.com" from the WHMCS Domain setting, else the System URL minus its first label. */
     public static function defaultSuffix()
     {
         $candidates = [];

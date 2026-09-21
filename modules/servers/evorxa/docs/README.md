@@ -54,8 +54,15 @@
 | ![Firewall](screenshots/04-client-firewall.png) | ![Reinstall](screenshots/05-client-reinstall.png) |
 | ![One-click apps](screenshots/06-client-reinstall-apps.png) | ![Reverse DNS](screenshots/07-client-ip-rdns.png) |
 | ![Setting up](screenshots/09-client-provisioning.png) | ![Closed](screenshots/11-client-closed.png) |
-| ![Arabic](screenshots/12-client-arabic.png) | ![Plans & Import](screenshots/21-admin-plans.png) |
-| ![Admin service tab](screenshots/26-admin-service-tab.png) | ![Server ready email](screenshots/27-email-server-ready.png) |
+| ![Suspended](screenshots/10-client-suspended.png) | ![Mobile](screenshots/13-client-mobile.png) |
+| ![Arabic](screenshots/12-client-arabic.png) | ![One-click app at order](screenshots/15-order-apps.png) |
+| ![Store](screenshots/16-store.png) | ![Server ready email](screenshots/27-email-server-ready.png) |
+| ![Plans & Import](screenshots/21-admin-plans.png) | ![Servers](screenshots/22-admin-servers.png) |
+| ![Activity log](screenshots/23-admin-activity-log.png) | ![Settings](screenshots/24-admin-settings.png) |
+| ![Install / Export](screenshots/25-admin-install-export.png) | ![Admin service tab](screenshots/26-admin-service-tab.png) |
+| ![Add the Evorxa server](screenshots/28-admin-setup-server.png) | ![Product Module Settings](screenshots/29-admin-product-module-settings.png) |
+
+All screenshots are in the [`screenshots`](screenshots) folder: `0x`/`1x` client area and order form, `2x`/`30` admin.
 
 ## Support
 

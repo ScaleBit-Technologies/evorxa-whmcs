@@ -31,6 +31,8 @@ Nothing else in WHMCS is modified.
 2. Find **Evorxa Manager** and click **Activate**.
 3. Click **Configure**, tick the admin roles that may use it, and **Save Changes**.
 
+![Activate Evorxa Manager](screenshots/30-admin-addon-activate.png)
+
 Activation creates the module's tables and the *Cloud Server Ready* email template (English and Arabic). The addon also runs the module's background tasks, so it must stay active.
 
 ## 3. Create an Evorxa API token
@@ -50,9 +52,13 @@ Copy the token (it is shown only once).
    - **Name**: Evorxa
    - **Hostname**: `api.evorxa.com`
    - **Module**: *Evorxa Cloud*
-   - **Password**: paste the API token
+   - **Password**: paste the API token (leave *Username* and *Access Hash* empty, keep *Secure* ticked)
 3. Click **Test Connection** - you should see a success message. If a token ability is missing, the message tells you which.
 4. **Save Changes**.
+
+![Add the Evorxa server](screenshots/28-admin-setup-server.png)
+
+WHMCS stores the token encrypted. The plan importer puts this server in a server group called *Evorxa* for you.
 
 ## 5. Settings
 
@@ -78,6 +84,16 @@ Open **Addons > Evorxa Manager > Plans & Import**:
 5. Keep *Create products hidden* ticked, then **Import selected plans**.
 
 Each product gets: prices in every WHMCS currency, the operating system / one-click app options, an optional hostname field, stock control and upgrade paths to bigger plans. Review the products in **Setup > Products/Services**, then untick **Hide** to publish.
+
+Each product's **Module Settings** tab shows which Evorxa plan it sells and the default operating system. You normally don't need to change anything here; *Switch to Advanced Mode* also shows the upstream billing term (*Match client term* by default, or *Always monthly*).
+
+![Product Module Settings](screenshots/29-admin-product-module-settings.png)
+
+You can also create a product by hand: *Setup > Products/Services > Create a New Product*, type *Other*, then on **Module Settings** choose *Evorxa Cloud*, the *Evorxa* server group, the plan and the default OS. To give it the OS/app picker, tick one of the imported *Evorxa: ... operating systems, ... apps* groups on its **Configurable Options** tab. Importing does all of this for you, so it is the recommended way.
+
+Once published, the products appear in your store like any other product group:
+
+![Store](screenshots/16-store.png)
 
 ## 7. Cron
 

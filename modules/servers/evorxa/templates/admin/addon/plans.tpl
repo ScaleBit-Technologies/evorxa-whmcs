@@ -94,7 +94,7 @@
         </div>
     </div>
     <div class="checkbox"><label><input type="checkbox" name="hidden" value="1" checked> Create products hidden (review before publishing)</label></div>
-    <div class="checkbox"><label><input type="checkbox" name="options" value="1" checked> Let clients choose the operating system / one-click app, hostname and SSH key when ordering</label></div>
+    <div class="checkbox"><label><input type="checkbox" name="options" value="1" checked> Let clients choose the operating system / one-click app and hostname when ordering</label></div>
     <button type="submit" class="btn btn-primary"><i class="fas fa-file-import"></i> Import selected plans</button>
     <span class="evxm-muted">&nbsp; Plans already in the chosen group are skipped. Stock is kept in sync every hour.</span>
 </div>
