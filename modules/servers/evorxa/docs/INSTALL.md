@@ -16,7 +16,15 @@ This takes about 10 minutes. You need WHMCS admin access (Full Administrator) an
 
 ## 1. Upload the files
 
-Extract the package into your WHMCS root folder (the folder that contains `init.php`). It only adds two folders:
+**With SSH**, one command downloads the latest release and installs it (run it again later to update):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ScaleBit-Technologies/evorxa-whmcs/master/install.sh | bash -s -- /path/to/whmcs
+```
+
+**Without SSH**, download [evorxa-whmcs.zip](https://github.com/ScaleBit-Technologies/evorxa-whmcs/releases/latest/download/evorxa-whmcs.zip) and extract it into your WHMCS root folder (the folder that contains `init.php`).
+
+Either way, only two folders are added:
 
 ```
 modules/servers/evorxa/          <- provisioning module, client panel, templates, docs
@@ -113,7 +121,7 @@ Open **Addons > Evorxa Manager > Dashboard**. When every item in *Setup* is gree
 
 ## Updating
 
-Extract a newer package over the old files. Settings, servers, logs and your `lang/overrides` are kept. If the new version changes the database, WHMCS runs the addon's upgrade automatically when you next open Evorxa Manager.
+Run the install command from step 1 again (it backs up the current files first), or extract a newer package over the old files. Settings, servers, logs and your `lang/overrides` are kept. If the new version changes the database, WHMCS runs the addon's upgrade automatically when you next open Evorxa Manager.
 
 ## Moving to another WHMCS
 

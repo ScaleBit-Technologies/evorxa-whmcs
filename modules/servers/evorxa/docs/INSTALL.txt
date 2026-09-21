@@ -23,5 +23,8 @@ Requirements: WHMCS 8.0+, PHP 7.4-8.3 with cURL, WHMCS cron every 5 minutes.
 7. Make sure the WHMCS cron runs every 5 minutes:
    */5 * * * * php -q /path/to/whmcs/crons/cron.php
 
-Updating: extract a newer zip over the old files. Settings, data and
+Install or update over SSH in one command:
+  curl -fsSL https://raw.githubusercontent.com/ScaleBit-Technologies/evorxa-whmcs/master/install.sh | bash -s -- /path/to/whmcs
+
+Updating: run that command again, or extract a newer zip over the old files. Settings, data and
 lang/overrides are kept.

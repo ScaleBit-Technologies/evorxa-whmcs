@@ -4,6 +4,7 @@
 
 First release.
 
+- One-command install and update over SSH (`install.sh`), downloads from GitHub releases.
 - Documentation: installation guide, usage guide and 27 screenshots (client area, order form, admin, email) in `modules/servers/evorxa/docs/`; included in every package.
 - Order form: one "Operating system or app" picker with logos (OS families + versions, app cards); re-attaches when the order form re-draws its options.
 - Evorxa Cloud server module: automatic provisioning with idempotent creates, suspend/unsuspend/terminate/upgrade, renewal keeper, project fence, ready email (EN/AR).

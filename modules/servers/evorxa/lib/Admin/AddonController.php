@@ -329,11 +329,12 @@ class AddonController
     {
         $plans = (new Catalog($this->api()))->plans(true);
         $linked = [];
-        foreach (Capsule::table('tblproducts')->where('servertype', 'evorxa')->get(['id', 'name', 'gid', 'hidden', 'retired', 'configoption1']) as $p) {
+        // Retired products can no longer be ordered, so they are not "your products" for a plan.
+        foreach (Capsule::table('tblproducts')->where('servertype', 'evorxa')->where('retired', 0)->get(['id', 'name', 'gid', 'hidden', 'configoption1']) as $p) {
             $monthly = Capsule::table('tblpricing')->where('type', 'product')->where('relid', $p->id)
                 ->where('currency', (int) Capsule::table('tblcurrencies')->where('default', 1)->value('id'))->value('monthly');
             $linked[(int) $p->configoption1][] = [
-                'id' => $p->id, 'name' => $p->name, 'hidden' => (bool) $p->hidden, 'retired' => (bool) $p->retired,
+                'id' => $p->id, 'name' => $p->name, 'hidden' => (bool) $p->hidden,
                 'monthly' => $monthly !== null && (float) $monthly > 0 ? (float) $monthly : null,
             ];
         }
