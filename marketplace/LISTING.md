@@ -112,4 +112,4 @@ An Evorxa account (evorxa.com) with wallet balance and an API token. PHP 7.4 - 8
 
 ## GitHub social preview
 
-`github-social-preview.jpg` (1280x720, under the 1 MB limit): upload it in the repository's Settings > General > Social preview. GitHub has no API for this.
+`github-social-preview.jpg` (1280x720, under the 1 MB limit) is the repository's social preview (set 2026-09-21 in Settings > General > Social preview; GitHub has no API for it).
