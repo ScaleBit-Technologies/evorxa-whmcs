@@ -4,6 +4,7 @@
 
 First release.
 
+- Documentation: installation guide, usage guide and 24 screenshots in `modules/servers/evorxa/docs/`; included in every package.
 - Order form: one "Operating system or app" picker with logos (OS families + versions, app cards); re-attaches when the order form re-draws its options.
 - Evorxa Cloud server module: automatic provisioning with idempotent creates, suspend/unsuspend/terminate/upgrade, renewal keeper, project fence, ready email (EN/AR).
 - Client panel: power, credentials, IPs with reverse DNS editing, usage graphs, DDoS view and alerts, network firewall with drag-and-drop rule order, reinstall with OS or one-click apps; cached, skeleton-loaded, RTL-ready.

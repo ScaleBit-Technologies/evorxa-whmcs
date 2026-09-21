@@ -1,0 +1,27 @@
+Evorxa Cloud for WHMCS {version}
+========================================
+
+Full guides with screenshots (open in any Markdown viewer or on GitHub):
+  modules/servers/evorxa/docs/README.md   overview
+  modules/servers/evorxa/docs/INSTALL.md  installation guide
+  modules/servers/evorxa/docs/USAGE.md    how to use
+
+Requirements: WHMCS 8.0+, PHP 7.4-8.3 with cURL, WHMCS cron every 5 minutes.
+
+1. Extract this zip into your WHMCS root folder (it adds modules/servers/evorxa
+   and modules/addons/evorxa_manager; nothing else is touched).
+2. WHMCS admin > Setup > Addon Modules: activate "Evorxa Manager" and give your
+   admin roles access.
+3. Evorxa console > API tokens: create a token with instances:read, instances:write,
+   analytics:read, shield:read, shield:write, wallet:read.
+4. Setup > Products/Services > Servers > Add New Server: module "Evorxa Cloud",
+   hostname api.evorxa.com, paste the token into Password, click Test Connection.
+5. Addons > Evorxa Manager > Settings: choose the Evorxa project for client servers
+   (a dedicated one is best) and your hostname suffix (e.g. example.com).
+6. Addons > Evorxa Manager > Plans & Import: pick plans, set your markup, import.
+   Products are created hidden; review them, then unhide.
+7. Make sure the WHMCS cron runs every 5 minutes:
+   */5 * * * * php -q /path/to/whmcs/crons/cron.php
+
+Updating: extract a newer zip over the old files. Settings, data and
+lang/overrides are kept.

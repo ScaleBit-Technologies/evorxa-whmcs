@@ -121,26 +121,13 @@ class Packager
         exit;
     }
 
+    /** Text of INSTALL.txt at the root of the package (docs/INSTALL.txt, with the version filled in). */
     public static function instructions()
     {
-        return "Evorxa Cloud for WHMCS " . Client::VERSION . "\n"
-            . "========================================\n\n"
-            . "Requirements: WHMCS 8.0+, PHP 7.4-8.3 with cURL, WHMCS cron every 5 minutes.\n\n"
-            . "1. Extract this zip into your WHMCS root folder (it adds modules/servers/evorxa\n"
-            . "   and modules/addons/evorxa_manager; nothing else is touched).\n"
-            . "2. WHMCS admin > Setup > Addon Modules: activate \"Evorxa Manager\" and give your\n"
-            . "   admin roles access.\n"
-            . "3. Evorxa console > API tokens: create a token with instances:read, instances:write,\n"
-            . "   analytics:read, shield:read, shield:write, wallet:read.\n"
-            . "4. Setup > Products/Services > Servers > Add New Server: module \"Evorxa Cloud\",\n"
-            . "   hostname api.evorxa.com, paste the token into Password, click Test Connection.\n"
-            . "5. Addons > Evorxa Manager > Settings: choose the Evorxa project for client servers\n"
-            . "   (a dedicated one is best) and your hostname suffix (e.g. example.com).\n"
-            . "6. Addons > Evorxa Manager > Plans & Import: pick plans, set your markup, import.\n"
-            . "   Products are created hidden; review them, then unhide.\n"
-            . "7. Make sure the WHMCS cron runs every 5 minutes:\n"
-            . "   */5 * * * * php -q /path/to/whmcs/crons/cron.php\n\n"
-            . "Updating: extract a newer zip over the old files. Settings, data and\n"
-            . "lang/overrides are kept.\n";
+        $text = @file_get_contents(dirname(__DIR__) . '/docs/INSTALL.txt');
+        if ($text === false) {
+            $text = "Evorxa Cloud for WHMCS {version}\n\nSee modules/servers/evorxa/docs/INSTALL.md\n";
+        }
+        return str_replace('{version}', Client::VERSION, $text);
     }
 }
