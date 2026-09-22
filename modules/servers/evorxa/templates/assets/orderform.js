@@ -60,6 +60,8 @@
             return;
         }
         select.value = String(subId);
+        // "input" for Livewire-bound selects (Paymenter), "change" for classic order forms.
+        select.dispatchEvent(new Event('input', { bubbles: true }));
         select.dispatchEvent(new Event('change', { bubbles: true }));
     }
 
@@ -73,7 +75,7 @@
 
     /** The wrapper the order form draws around one option (Lagom: .section, Standard Cart: .form-group). */
     function optionBlock(select, other) {
-        var candidates = ['.section', '.form-group', '.panel', 'tr'];
+        var candidates = ['.section', '.form-group', '.panel', 'fieldset', 'tr'];
         for (var i = 0; i < candidates.length; i++) {
             var block = select.closest(candidates[i]);
             if (block && (!other || !block.contains(other))) {
@@ -238,12 +240,19 @@
         var os = null;
         var app = null;
         Object.keys(cfg.options || {}).forEach(function (optionId) {
-            var select = document.querySelector('select[name="configoption[' + optionId + ']"]');
+            // The map can name the field (Paymenter: checkoutConfig.os); WHMCS uses configoption[<id>].
+            var def = cfg.options[optionId];
+            var select = document.querySelector('select[name="' + (def.name || 'configoption[' + optionId + ']') + '"]');
             if (!select || select.getAttribute('data-evx-of')) {
                 return;
             }
             select.setAttribute('data-evx-of', '1');
-            var entry = { select: select, def: cfg.options[optionId] };
+            // A re-render that kept our old picker but reset the dropdown: drop the stale copy.
+            var stale = select.parentNode.querySelector('.evx-of');
+            if (stale) {
+                stale.parentNode.removeChild(stale);
+            }
+            var entry = { select: select, def: def };
             if (entry.def.type === 'os') {
                 os = entry;
             } else {

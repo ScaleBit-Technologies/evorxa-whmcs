@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Client panel script: also sends the CSRF token as an X-CSRF-TOKEN header, treats non-JSON-API answers (login page, proxy errors) as an expired session, and stops polling once the panel leaves the page.
+- Order form picker: fires input + change events, recognises fieldset-wrapped options and removes a stale picker after a re-render (shared with the Paymenter extension).
+
 ## 1.0.0 - 2026-09-21
 
 First release, under the MIT license.

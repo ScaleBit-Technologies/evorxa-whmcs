@@ -82,7 +82,7 @@
         return fetch(boot.api, {
             method: 'POST',
             credentials: 'same-origin',
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': boot.token || '' },
             body: body
         }).then(function (res) {
             return res.text();
@@ -93,8 +93,12 @@
             } catch (e) {
                 throw new ApiError(t('js_session'), 'session');
             }
-            if (!json || !json.ok) {
-                throw new ApiError((json && json.error) || t('js_error'), json && json.code);
+            if (!json || typeof json.ok === 'undefined') {
+                // Not our endpoint's answer (login page, CSRF 419, proxy error page).
+                throw new ApiError(t('js_session'), 'session');
+            }
+            if (!json.ok) {
+                throw new ApiError(json.error || t('js_error'), json.code);
             }
             return json.data || {};
         }, function () {
@@ -584,7 +588,8 @@
     var sessionLost = false;
     function schedule(delay) {
         clearTimeout(pollTimer);
-        if (document.hidden || sessionLost || (state !== 'active' && state !== 'provisioning')) {
+        // Also stop once the panel is gone (single-page navigation away from the service).
+        if (document.hidden || sessionLost || !document.body.contains(root) || (state !== 'active' && state !== 'provisioning')) {
             return;
         }
         if (delay === undefined) {
